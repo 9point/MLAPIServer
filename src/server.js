@@ -17,3 +17,5 @@ const server = new grpc.Server();
 server.addService(services.GreeterService, { sayHello: sayHello });
 server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
 server.start();
+
+console.log(`Listening on port ${port}`);
