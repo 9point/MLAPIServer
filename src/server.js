@@ -1,25 +1,49 @@
+const GRPCMLMessages = require('./static_codegen/mlservice_pb');
+const GRPCMLServices = require('./static_codegen/mlservice_grpc_pb');
 const MLProject = require('./models/MLProject');
 
 const grpc = require('grpc');
-const helloWorldMessages = require('./static_codegen/helloworld_pb');
-const helloWorldServices = require('./static_codegen/helloworld_grpc_pb');
 
 const { genConnect } = require('./models');
 
-/**
- * Implements the SayHello RPC method.
+/*
+ * GRPC Endpoints
  */
-function sayHello(call, callback) {
-  var reply = new helloWorldMessages.HelloReply();
-  reply.setMessage('Hello ' + call.request.getName());
-  callback(null, reply);
+
+function getProjects(call) {
+  MLProject.find()
+    .then((projects) => {
+      if (projects.length === 0) {
+        call.end();
+        return;
+      }
+
+      for (const project of projects) {
+        const message = new GRPCMLMessages.Obj_MLProject();
+        message.setId(project._id.toString());
+        message.setCreatedat(project.createdAt.getTime() / 1000);
+        message.setUpdatedat(project.updatedAt.getTime() / 1000);
+        message.setName(project.name);
+        message.setIsdeleted(project.isDeleted);
+        message.setImagename(project.imageName);
+
+        call.write(message);
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+      call.end();
+    });
 }
 
 const port = process.env.PORT || '50051';
 
 const server = new grpc.Server();
-server.addService(helloWorldServices.GreeterService, { sayHello: sayHello });
-server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
+server.addService(GRPCMLServices.MLServiceService, {
+  getProjects: getProjects,
+});
+
+server.bind(`localhost:${port}`, grpc.ServerCredentials.createInsecure());
 server.start();
 
 console.log(`Listening on port ${port}`);
@@ -27,8 +51,7 @@ console.log(`Listening on port ${port}`);
 genConnect()
   .then(() => {
     console.log('mongo connected');
-
-    MLProject.find().then(console.log).catch(console.error);
+    // MLProject.find().then(console.log).catch(console.error);
   })
   .catch((error) => {
     console.error(error);
