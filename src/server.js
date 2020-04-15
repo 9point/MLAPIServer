@@ -1,12 +1,12 @@
 const grpc = require('grpc');
-const messages = require('./greeter-service/helloworld_pb');
-const services = require('./greeter-service/helloworld_grpc_pb');
+const helloWorldMessages = require('./static_codegen/helloworld_pb');
+const helloWorldServices = require('./static_codegen/helloworld_grpc_pb');
 
 /**
  * Implements the SayHello RPC method.
  */
 function sayHello(call, callback) {
-  var reply = new messages.HelloReply();
+  var reply = new helloWorldMessages.HelloReply();
   reply.setMessage('Hello ' + call.request.getName());
   callback(null, reply);
 }
@@ -14,7 +14,7 @@ function sayHello(call, callback) {
 const port = process.env.PORT || '50051';
 
 const server = new grpc.Server();
-server.addService(services.GreeterService, { sayHello: sayHello });
+server.addService(helloWorldServices.GreeterService, { sayHello: sayHello });
 server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
 server.start();
 

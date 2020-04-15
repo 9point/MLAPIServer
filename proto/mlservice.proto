@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+enum MLTaskInstanceStatus {
+  QUEUED = 0;
+  RUNNING = 1;
+  FAILED = 2;
+  FINISHED = 3;
+  TERMINATED = 4;
+}
+
+message Obj_MLProject {
+  string id = 1;
+  google.protobuf.Timestamp createdAt = 2;
+  google.protobuf.Timestamp updatedAt = 3;
+  bool isDeleted = 4;
+  string imageName = 5;
+  string name = 6;
+}
+
+message Stub_MLProject {
+  string imageName = 1;
+  string name = 2;
+}
+
+message Obj_MLTask {
+  string id = 1;
+  google.protobuf.Timestamp createdAt = 2;
+  google.protobuf.Timestamp updatedAt = 3;
+  bool isDeleted = 4;
+  string name = 5;
+  string projectRefID = 6;
+  string version = 7;
+}
+
+message Stub_MLTask {
+  string name = 1;
+  string projectRefID = 2;
+  string version = 3;
+}
+
+message Obj_MLTaskInstance {
+  string id = 1;
+  google.protobuf.Timestamp createdAt = 2;
+  google.protobuf.Timestamp updatedAt = 3;
+  bool isDeleted = 4;
+  string projectRefID = 5;
+  MLTaskInstanceStatus status = 6;
+  string taskRefID = 7;
+}
+
+message Obj_MLTaskInstanceMessage {
+  string id = 1;
+  google.protobuf.Timestamp createdAt = 2;
+  google.protobuf.Timestamp updatedAt = 3;
+  bool isDeleted = 4;
+  string payload = 5;
+  string taskInstanceRefID = 6;
+}
+
+message Stub_MLTaskInstanceMessage {
+  string payload = 1;
+  string taskInstanceRefID = 2;
+}
+
+message Req_MLProjects {}
+
+message Req_MLTasksForProject {
+  string projectRefID = 1;
+}
+
+message Req_MLTaskInstancesForTask {
+  string taskRefID = 1;
+  MLTaskInstanceStatus status = 2;
+}
+
+message Req_MLTaskInstanceMessagesForTaskInstance {
+  string taskInstanceRefID = 1;
+}
+
+message Req_StartMLTask {}
+
+service MLService {
+  rpc GetProjects(Req_MLProjects) returns (stream Obj_MLProject);
+  rpc GetTasksForProject(Req_MLTasksForProject) returns (stream Obj_MLTask);
+  rpc GetTaskInstancesForTask(Req_MLTaskInstancesForTask) returns (stream Obj_MLTaskInstance);
+  rpc GetTaskInstancesMessagesForTaskInstance(Req_MLTaskInstanceMessagesForTaskInstance) returns (stream Obj_MLTaskInstanceMessage);
+
+  rpc CreateMLProject(Stub_MLProject) returns (Obj_MLProject);
+  rpc CreateMLTask(Stub_MLTask) returns (Obj_MLTask);
+  rpc CreateMLTaskInstanceMessage(Stub_MLTaskInstanceMessage) returns (Obj_MLTaskInstanceMessage);
+
+  rpc StartMLTask(Req_StartMLTask) returns (Obj_MLTaskInstance);
+}
