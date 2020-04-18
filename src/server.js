@@ -6,10 +6,6 @@ const grpc = require('grpc');
 
 const { genConnect } = require('./models');
 
-/*
- * GRPC Endpoints
- */
-
 function getProjects(call) {
   MLProject.find()
     .then((projects) => {
