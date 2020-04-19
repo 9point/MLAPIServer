@@ -18,7 +18,6 @@ console.log(`Listening on port ${port}`);
 genConnect()
   .then(() => {
     console.log('mongo connected');
-    // MLProject.find().then(console.log).catch(console.error);
   })
   .catch((error) => {
     console.error(error);

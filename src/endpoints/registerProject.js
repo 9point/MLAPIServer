@@ -8,7 +8,7 @@ async function registerProject(call, callback) {
   const projectName = request.getName();
   const imageName = request.getImageName();
 
-  let project = await Project.findOne({ name: projectName });
+  let project = await Project.findOne({ isDeleted: false, name: projectName });
 
   if (project) {
     console.log(`Registering existing project: ${projectName}...`);
