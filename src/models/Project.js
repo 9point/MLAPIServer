@@ -9,4 +9,4 @@ const Schema = new mongoose.Schema({
 
 Schema.add(ModelSchema);
 
-module.exports = mongoose.model('MLProject', Schema);
+module.exports = mongoose.model('Project', Schema);

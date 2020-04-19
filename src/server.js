@@ -1,42 +1,52 @@
 const GRPCMLMessages = require('./static_codegen/mlservice_pb');
 const GRPCMLServices = require('./static_codegen/mlservice_grpc_pb');
-const MLProject = require('./models/MLProject');
+const GRPCUtils = require('./grpc-utils');
+const Project = require('./models/Project');
 
 const grpc = require('grpc');
 
 const { genConnect } = require('./models');
 
-function getProjects(call) {
-  MLProject.find()
-    .then((projects) => {
-      if (projects.length === 0) {
-        call.end();
-        return;
-      }
+async function registerProject(call, callback) {
+  console.log('Calling: RegisterProject');
 
-      for (const project of projects) {
-        const message = new GRPCMLMessages.Obj_MLProject();
-        message.setId(project._id.toString());
-        message.setCreatedat(project.createdAt.getTime() / 1000);
-        message.setUpdatedat(project.updatedAt.getTime() / 1000);
-        message.setName(project.name);
-        message.setIsdeleted(project.isDeleted);
-        message.setImagename(project.imageName);
+  const { request } = call;
+  const projectName = request.getName();
+  const imageName = request.getImageName();
 
-        call.write(message);
-      }
-    })
-    .catch((error) => {
-      console.error(error);
-      call.end();
-    });
+  let project = await Project.findOne({ name: projectName });
+
+  if (project) {
+    console.log(`Registering existing project: ${projectName}...`);
+    // This project already exists. Check for any updates.
+    project = await GRPCUtils.Project.genUpdate(project, request);
+    callback(null, GRPCUtils.Project.createMessage(project));
+    return;
+  }
+
+  console.log(`Registering new project: ${projectName}...`);
+
+  const now = new Date();
+  project = new Project({
+    __modelType__: 'Project',
+    __type__: 'Model',
+    createdAt: now,
+    imageName: imageName,
+    isDeleted: false,
+    name: projectName,
+    updatedAt: now,
+  });
+
+  await project.save();
+
+  callback(null, GRPCUtils.Project.createMessage(project));
 }
 
 const port = process.env.PORT || '50051';
 
 const server = new grpc.Server();
-server.addService(GRPCMLServices.MLServiceService, {
-  getProjects: getProjects,
+server.addService(GRPCMLServices.MLService, {
+  registerProject: GRPCUtils.handleError(registerProject),
 });
 
 server.bind(`localhost:${port}`, grpc.ServerCredentials.createInsecure());
