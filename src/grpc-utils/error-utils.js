@@ -1,9 +1,9 @@
 function handleStreamError(stream, cb) {
-  return () => {
+  return (...args) => {
     // Endpoint may or may not be async. Need to handle both cases.
     let promise;
     try {
-      promise = cb();
+      promise = cb.apply(cb, args);
     } catch (error) {
       console.error(`Caught unhandled endpoint error: ${error}`);
       if (error.stack) {
@@ -13,7 +13,7 @@ function handleStreamError(stream, cb) {
     }
 
     if (promise && typeof promise.catch === 'function') {
-      // Assuming this is a function.
+      // Assuming this is a promise.
       promise.catch((error) => {
         console.error(`Caught unhandled endpoint error: ${error}`);
         if (error.stack) {

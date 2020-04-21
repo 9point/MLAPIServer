@@ -66,8 +66,8 @@ message Req_RegisterProject {
   string name = 2;
 }
 
-message Req_RegisterWorkflows {
-  string names = 1;
+message Req_RegisterWorkflow {
+  string name = 1;
   string project_ref_id = 2;
 }
 
@@ -89,7 +89,7 @@ service ML {
   rpc GetWorkflowRunMessagesForWorkflowRun(Req_GetWorkflowRunMessagesForWorkflowRun) returns (stream Obj_WorkflowRunMessage);
 
   rpc RegisterProject(Req_RegisterProject) returns (Obj_Project);
-  rpc RegisterWorkflows(Req_RegisterWorkflows) returns (stream Obj_Workflow);
+  rpc RegisterWorkflows(stream Req_RegisterWorkflow) returns (stream Obj_Workflow);
   rpc RegisterTasks(stream Req_RegisterTask) returns (stream Obj_Task);
 
   rpc RunWorkflow(Req_RunWorkflow) returns (stream Obj_WorkflowRunMessage);
