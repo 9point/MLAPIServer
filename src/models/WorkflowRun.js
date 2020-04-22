@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { ModelSchema, RefSchema } = require('./schemas');
 
 const Schema = new mongoose.Schema({
-  payloadRef: RefSchema,
+  workflowRef: RefSchema,
 });
 
 Schema.add(ModelSchema);
