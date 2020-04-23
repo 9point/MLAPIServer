@@ -17,6 +17,23 @@ message Obj_Project {
   string name = 6;
 }
 
+message Obj_Worker {
+  enum Status {
+    IDLE = 0;
+    WORKING = 1;
+    TERMINATING = 2;
+    UNRESPONSIVE = 3;
+    CLOSED = 4;
+  }
+
+  string id = 1;
+  int64 created_at = 2;
+  int64 updated_at = 3;
+  bool is_deleted = 4;
+  string project_id = 5;
+  Status status = 6;
+}
+
 message Obj_Workflow {
   string id = 1;
   int64 created_at = 2;
@@ -31,20 +48,29 @@ message Obj_WorkflowRun {
   int64 created_at = 2;
   int64 updated_at = 3;
   bool is_deleted = 4;
-  bool is_active = 5;
-  string active_task_refs = 6;
+  bool job_id = 6;
   string project_ref_id = 7;
-  RunStatus run_status = 8;
 }
 
-message Obj_WorkflowRunMessage {
+message Obj_WorkerLog {
   string id = 1;
   int64 created_at = 2;
   int64 updated_at = 3;
   bool is_deleted = 4;
   string payload = 5;
   string payload_key = 6;
-  string workflow_run_ref_id = 7;
+  string worker_id = 7;
+}
+
+message Obj_WorkerDirective {
+  string id = 1;
+  int64 created_at = 2;
+  int64 updated_at = 3;
+  bool is_deleted = 4;
+  string payload = 5;
+  string payload_key = 6;
+  string worker_receiver_id = 7;
+  string worker_sender_id = 8;
 }
 
 message Obj_Task {
@@ -58,9 +84,8 @@ message Obj_Task {
   string version = 8;
 }
 
-message Req_GetWorkflowRunMessagesForWorkflowRun {
-  string task_run_ref_id = 1;
-  bool watch = 2;
+message Req_GetProject {
+  string name = 1;
 }
 
 message Req_RegisterProject {
@@ -79,28 +104,37 @@ message Req_RegisterTask {
   string version = 3;
 }
 
-message Req_RunWorkflow {
-  string workflow_ref_id = 1;
+message Req_RegisterWorker {
+  string project_id = 1;
 }
 
-message Req_WriteWorkflowRunMessage {
+message Req_RouteWorkerDirective {
   string payload = 1;
   string payload_key = 2;
-  string workflow_run_ref_id = 3;
+  string worker_id = 3;
+}
+
+message Res_RegisterWorker {
+  string project_id = 1;
+}
+
+message Res_WriteWorkflowRunLog {
+  enum Receipt {
+    RECEIVED = 0;
+    FAILED = 1;
+  }
+
+  string id = 1;
+  Receipt receipt = 2; 
 }
 
 service ML {
-  // rpc GetProjects(Req_GetProjects) returns (stream Obj_Project);
-  // rpc GetWorkflowsForProject(Req_GetWorkflowsForProject) returns (stream Obj_Workflow);
-  // rpc GetTasksForWorkflow(Req_GetTasksForProject) returns (stream Obj_Task);
-  // rpc GetTaskRunsForTask(Req_GetTaskInstancesForTask) returns (stream Obj_TaskInstance);
-  rpc GetWorkflowRunMessagesForWorkflowRun(Req_GetWorkflowRunMessagesForWorkflowRun) returns (stream Obj_WorkflowRunMessage);
+  rpc GetProject(Req_GetProject) returns (Obj_Project);
 
   rpc RegisterProject(Req_RegisterProject) returns (Obj_Project);
+  rpc RegisterWorker(Req_RegisterWorker) returns (Obj_Worker);
   rpc RegisterWorkflows(stream Req_RegisterWorkflow) returns (stream Obj_Workflow);
   rpc RegisterTasks(stream Req_RegisterTask) returns (stream Obj_Task);
 
-  rpc RunWorkflow(Req_RunWorkflow) returns (stream Obj_WorkflowRunMessage);
-
-  rpc WriteWorkflowRunMessages(stream Req_WriteWorkflowRunMessage) returns (stream Obj_WorkflowRunMessage);
+  rpc RouteWorkerDirectives(stream Req_RouteWorkerDirective) returns (stream Obj_WorkerDirective);
 }

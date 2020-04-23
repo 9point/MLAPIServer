@@ -3,10 +3,12 @@ const mongoose = require('mongoose');
 const { ModelSchema, RefSchema } = require('./schemas');
 
 const Schema = new mongoose.Schema({
-  jobID: Boolean,
-  workflowRef: RefSchema,
+  jobInstanceID: String,
+  payload: String,
+  payloadKey: String,
+  workflowRunRef: RefSchema,
 });
 
 Schema.add(ModelSchema);
 
-module.exports = mongoose.model('WorkflowRun', Schema);
+module.exports = mongoose.model('WorkflowRunLog', Schema);
