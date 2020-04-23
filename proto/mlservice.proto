@@ -8,6 +8,11 @@ enum RunStatus {
   TERMINATED = 4;
 }
 
+enum WorkerDirectiveType {
+  TO_SERVER = 0;
+  TO_WORKER = 1;
+}
+
 message Obj_Project {
   string id = 1;
   int64 created_at = 2;
@@ -67,10 +72,10 @@ message Obj_WorkerDirective {
   int64 created_at = 2;
   int64 updated_at = 3;
   bool is_deleted = 4;
-  string payload = 5;
-  string payload_key = 6;
-  string worker_receiver_id = 7;
-  string worker_sender_id = 8;
+  WorkerDirectiveType directive_type = 5;
+  string payload = 6;
+  string payload_key = 7;
+  string worker_id = 8;
 }
 
 message Obj_Task {
@@ -109,23 +114,13 @@ message Req_RegisterWorker {
 }
 
 message Req_RouteWorkerDirective {
-  string payload = 1;
-  string payload_key = 2;
-  string worker_id = 3;
+  string payload = 2;
+  string payload_key = 3;
+  string worker_id = 4;
 }
 
 message Res_RegisterWorker {
   string project_id = 1;
-}
-
-message Res_WriteWorkflowRunLog {
-  enum Receipt {
-    RECEIVED = 0;
-    FAILED = 1;
-  }
-
-  string id = 1;
-  Receipt receipt = 2; 
 }
 
 service ML {

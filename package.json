@@ -13,7 +13,8 @@
     "lodash": "^4.6.1",
     "minimist": "^1.2.0",
     "mongoose": "^5.9.9",
-    "nullthrows": "^1.1.1"
+    "nullthrows": "^1.1.1",
+    "uuid": "^7.0.3"
   },
   "devDependencies": {}
 }
