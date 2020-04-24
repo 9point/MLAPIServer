@@ -1,12 +1,24 @@
-const mongoose = require('mongoose');
+const createModel = require('./createModel');
+const createRef = require('./createRef');
 
-const { ModelSchema, RefSchema } = require('./schemas');
+const COLLECTION_NAME = 'Workflows';
+const MODEL_TYPE = 'Workflow';
 
-const Schema = new mongoose.Schema({
-  name: String,
-  projectRef: RefSchema,
-});
+/**
+ *
+ * @param {Object} fields
+ *   name: Name of the workflow.
+ *   projectID: ID of the parent project.
+ */
+function create(fields) {
+  return createModel(MODEL_TYPE, {
+    name: fields.name,
+    projectRef: createRef('Project', fields.projectID),
+  });
+}
 
-Schema.add(ModelSchema);
-
-module.exports = mongoose.model('Workflow', Schema);
+module.exports = {
+  COLLECTION_NAME,
+  MODEL_TYPE,
+  create,
+};

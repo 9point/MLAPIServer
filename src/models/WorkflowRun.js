@@ -1,12 +1,22 @@
-const mongoose = require('mongoose');
+const createModel = require('./createModel');
+const createRef = require('./createRef');
 
-const { ModelSchema, RefSchema } = require('./schemas');
+const COLLECTION_NAME = 'WorkflowRuns';
+const MODEL_TYPE = 'WorkflowRun';
 
-const Schema = new mongoose.Schema({
-  jobID: Boolean,
-  workflowRef: RefSchema,
-});
+/**
+ *
+ * @param {Object} fields
+ *   workerID: ID of the worker this directive is associated with.
+ */
+function create(fields) {
+  return createModel(MODEL_TYPE, {
+    workflowRef: createRef('Workflow', fields.workflowID),
+  });
+}
 
-Schema.add(ModelSchema);
-
-module.exports = mongoose.model('WorkflowRun', Schema);
+module.exports = {
+  COLLECTION_NAME,
+  MODEL_TYPE,
+  create,
+};

@@ -1,5 +1,6 @@
+const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
-const Semver = require('../Semver');
+const Semver = require('../semver');
 const Task = require('../models/Task');
 
 const nullthrows = require('nullthrows');
@@ -10,133 +11,103 @@ async function registerTasks(call) {
   // Maps workflow id to all tasks for that workflow.
   const requests = [];
 
-  call.on(
-    'data',
-    GRPCUtils.ErrorUtils.handleStreamError(call, (request) => {
-      console.log('RegisterTasks: Receiving request');
-      requests.push(request);
-    }),
-  );
+  function onData(request) {
+    console.log('RegisterTasks: Receiving request');
+    requests.push(request);
+  }
 
-  call.on(
-    'end',
-    GRPCUtils.ErrorUtils.handleStreamError(call, async () => {
-      console.log('RegisterTasks: Done receiving request');
+  async function onEnd() {
+    console.log('RegisterTasks: Done receiving request');
 
-      if (requests.length === 0) {
-        console.error('RegisterTasks: Did not receive any requests');
-        call.end();
-        return;
-      }
+    if (requests.length === 0) {
+      throw Error('RegisterTasks: Did not receive any requests');
+    }
 
-      if (hasMultipleRequestsWithSameName(requests)) {
-        console.error(
-          'RegisterTasks: Multiple tasks are being reigstered with the same name.',
-        );
-        call.end();
-        return;
-      }
+    if (hasMultipleRequestsWithSameName(requests)) {
+      throw Error(
+        'RegisterTasks: Multiple tasks are being reigstered with the same name.',
+      );
+    }
 
-      const projectIDs = requests.map((req) => req.getProjectRefId());
-      if (projectIDs.some((id) => id !== projectIDs[0])) {
-        console.error(
-          'RegisterTasks: All tasks being registered must belong to the same project',
-        );
-        call.end();
-        return;
-      }
+    const projectIDs = requests.map((req) => req.getProjectRefId());
+    if (projectIDs.some((id) => id !== projectIDs[0])) {
+      throw Error(
+        'RegisterTasks: All tasks being registered must belong to the same project',
+      );
+    }
 
-      const allTasks = await Task.find({
-        'projectRef.refID': projectIDs[0],
-        isDeleted: false,
-      });
+    const query = DB.createQuery(Task, (_) =>
+      _.where('projectRef.refID', '==', projectIDs[0]).where(
+        'isDeleted',
+        '==',
+        false,
+      ),
+    );
 
-      const removedTasks = allTasks.filter(
-        (task) => !requests.some((req) => req.getName() === task.name),
+    const allTasks = await DB.genRunQuery(query);
+
+    const removedTasks = allTasks.filter(
+      (task) => !requests.some((req) => req.getName() === task.name),
+    );
+
+    const existingTasks = allTasks.filter((task) =>
+      requests.some((req) => req.getName() === task.name),
+    );
+
+    const newTasks = requests
+      .filter((req) => !allTasks.some((task) => task.name === req.getName()))
+      .map((req) =>
+        Task.create({
+          name: req.getName(),
+          projectID: projectIds[0],
+          version: req.getVersion(),
+        }),
       );
 
-      const existingTasks = allTasks.filter((task) =>
-        requests.some((req) => req.getName() === task.name),
-      );
+    const changedTasks = [];
 
-      const now = new Date();
-      const newTasks = requests
-        .filter((req) => !allTasks.some((task) => task.name === req.getName()))
-        .map((req) => {
-          const semver = Semver.parse(req.getVersion());
+    for (const task of existingTasks) {
+      // Find the corresponding request.
+      const req = nullthrows(requests.find((r) => r.getName() === task.name));
+      const fromSemver = Semver.parse(task.version);
+      const toSemver = Semver.parse(req.getVersion());
 
-          return new Task({
-            __modelType__: 'Task',
-            __type__: 'Model',
-            createdAt: now,
-            isDeleted: false,
-            isMutable: semver.dev,
-            name: req.getName(),
-            projectRef: {
-              __type__: 'Ref',
-              refID: projectIDs[0],
-              refType: 'Project',
-            },
-            updatedAt: now,
-            version: req.getVersion(),
-          });
-        });
-
-      const changedTasks = [];
-
-      for (const task of existingTasks) {
-        // Find the corresponding request.
-        const req = nullthrows(requests.find((r) => r.getName() === task.name));
-        const fromSemver = Semver.parse(task.version);
-        const toSemver = Semver.parse(req.getVersion());
-
-        if (Semver.isEqual(fromSemver, toSemver)) {
-          continue;
-        }
-
-        if (!Semver.isValidTransition(fromSemver, toSemver)) {
-          throw Error(
-            `Invalid Semver transition for task ${task.name}: ${
-              task.version
-            } -> ${req.getVersion()}`,
-          );
-        }
-
-        task.version = req.getVersion();
-        task.isMutable = toSemver.dev;
-        changedTasks.push(changedTasks);
+      if (Semver.isEqual(fromSemver, toSemver)) {
+        continue;
       }
 
-      for (const task of removedTasks) {
-        task.isDeleted = true;
-      }
+      changedTasks.push(Task.set(task, { version: req.getVersion() }));
+    }
 
-      console.log(`RegisterTasks: Creating ${newTasks.length} task(s).`);
-      console.log(`RegisterTasks: Updated ${changedTasks.length} task(s).`);
-      console.log(`RegisterTasks: Removing ${removedTasks.length} task(s).`);
-      console.log(
-        `RegisterTasks: ${
-          existingTasks.length - changedTasks.length
-        } unchanged task(s).`,
-      );
+    console.log(`RegisterTasks: Creating ${newTasks.length} task(s).`);
+    console.log(`RegisterTasks: Updated ${changedTasks.length} task(s).`);
+    console.log(`RegisterTasks: Removing ${removedTasks.length} task(s).`);
+    console.log(
+      `RegisterTasks: ${
+        existingTasks.length - changedTasks.length
+      } unchanged task(s).`,
+    );
 
-      await Promise.all(
-        removedTasks
-          .concat(newTasks)
-          .concat(changedTasks)
-          .map((task) => task.save()),
-      );
+    const deletePromises = removedTasks.map((t) => DB.genDeleteModel(Task, t));
+    const createPromises = newTasks.map((t) => DB.genSetModel(Task, t));
+    const changePromises = changedTasks((t) => DB.genSetModel(Task, t));
 
-      const currentTasks = existingTasks.concat(newTasks);
+    await Promise.all(
+      deletePromises.concat(createPromises).concat(changePromises),
+    );
 
-      for (const task of currentTasks) {
-        const message = GRPCUtils.Task.createMessage(task);
-        call.write(message);
-      }
+    const currentTasks = existingTasks.concat(newTasks);
 
-      call.end();
-    }),
-  );
+    for (const task of currentTasks) {
+      const message = GRPCUtils.Task.createMessage(task);
+      call.write(message);
+    }
+
+    call.end();
+  }
+
+  call.on('data', GRPCUtils.ErrorUtils.handleStreamError(call, onData));
+  call.on('end', GRPCUtils.ErrorUtils.handleStreamError(call, onEnd));
 }
 
 function hasMultipleRequestsWithSameName(requests) {

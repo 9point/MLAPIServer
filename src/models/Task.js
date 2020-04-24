@@ -1,14 +1,51 @@
-const mongoose = require('mongoose');
+const createModel = require('./createModel');
+const createRef = require('./createRef');
+const semver = require('../semver');
 
-const { ModelSchema, RefSchema } = require('./schemas');
+const COLLECTION_NAME = 'Tasks';
+const MODEL_TYPE = 'Task';
 
-const Schema = new mongoose.Schema({
-  isMutable: Boolean,
-  name: String,
-  projectRef: RefSchema,
-  version: String,
-});
+/**
+ *
+ * @param {Object} fields
+ *   name: Name of the workflow.
+ *   projectID: ID of the parent project.
+ *   version: Version of the task.
+ */
+function create(fields) {
+  const sv = semver.parse(fields.version);
 
-Schema.add(ModelSchema);
+  return createModel(MODEL_TYPE, {
+    isMutable: sv.dev,
+    name: fields.name,
+    projectRef: createRef('Project', fields.projectID),
+    version: fields.version,
+  });
+}
 
-module.exports = mongoose.model('Task', Schema);
+/**
+ *
+ * @param {*} model - A task.
+ *
+ * @param {*} fields
+ *   version: New version of the task.
+ */
+function set(model, fields) {
+  const fromSemver = semver(model.version);
+  const toSemver = semver(fields.version);
+
+  if (!semver.isValidTransition(fromSemver, toSemver)) {
+    throw Error(
+      `Invalid version transition: ${model.version} -> ${fields.version}`,
+    );
+  }
+
+  return setModel(model, { ...fields, isMutable: toSemver.dev });
+}
+
+module.exports = {
+  COLLECTION_NAME,
+  MODEL_TYPE,
+  create,
+  set,
+};

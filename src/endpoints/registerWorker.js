@@ -7,22 +7,7 @@ async function registerWorker(call, callback) {
 
   const { request } = call;
   const projectID = request.getProjectId();
-
-  const now = new Date();
-
-  const worker = new Worker({
-    __modelType__: 'Worker',
-    __type__: 'Model',
-    createdAt: now,
-    isDeleted: false,
-    projectRef: {
-      __type__: 'Ref',
-      refID: projectID,
-      refType: 'Project',
-    },
-    status: GRPCMLMessages.Obj_Worker.Status.UNRESPONSIVE, // Unresponsive until it connects on a separate endpoint.
-    updatedAt: now,
-  });
+  const worker = Worker.build({ projectID });
 
   await worker.save();
 

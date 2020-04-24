@@ -1,12 +1,20 @@
-const mongoose = require('mongoose');
+const createModel = require('./createModel');
 
-const { ModelSchema } = require('./schemas');
+const COLLECTION_NAME = 'Projects';
+const MODEL_TYPE = 'Project';
 
-const Schema = new mongoose.Schema({
-  imageName: String,
-  name: String,
-});
+/**
+ *
+ * @param {Object} fields
+ *   imageName - name of the docker image.
+ *   name - Name of the project.
+ */
+function create(fields) {
+  return createModel(MODEL_TYPE, fields);
+}
 
-Schema.add(ModelSchema);
-
-module.exports = mongoose.model('Project', Schema);
+module.exports = {
+  COLLECTION_NAME,
+  MODEL_TYPE,
+  create,
+};

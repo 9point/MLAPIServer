@@ -1,35 +1,28 @@
-const mongoose = require('mongoose');
+const createModel = require('./createModel');
+const createRef = require('./createRef');
 
-const { ModelSchema, RefSchema } = require('./schemas');
+const COLLECTION_NAME = 'WorkerDirectives';
+const MODEL_TYPE = 'WorkerDirective';
 
-const Schema = new mongoose.Schema({
-  directiveType: Number,
-  payload: String,
-  payloadKey: String,
-  workerRef: RefSchema,
-});
-
-Schema.add(ModelSchema);
-
-const Model = mongoose.model('WorkerDirective', Schema);
-
-Model.build = function build(directiveType, workerID, payloadKey, payload) {
-  const now = new Date();
-  return new Model({
-    __modelType__: 'WorkerDirective',
-    __type__: 'Model',
-    createdAt: now,
-    directiveType,
-    isDeleted: false,
-    payload: JSON.stringify(payload),
-    payloadKey,
-    updatedAt: now,
-    workerRef: {
-      __type__: 'Ref',
-      refID: workerID,
-      refType: 'Worker',
-    },
+/**
+ *
+ * @param {Object} fields
+ *   directiveType: Indicates direction of communication.
+ *   payload: Payload of the directive.
+ *   payloadKey: The key associated with the payload.
+ *   workerID: ID of the worker this directive is associated with.
+ */
+function create(fields) {
+  return createModel(MODEL_TYPE, {
+    directiveType: fields.directiveType,
+    payload: fields.payload,
+    payloadKey: fields.payloadKey,
+    workerRef: createRef('Worker', fields.workerID),
   });
-};
+}
 
-module.exports = Model;
+module.exports = {
+  COLLECTION_NAME,
+  MODEL_TYPE,
+  create,
+};

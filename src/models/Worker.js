@@ -1,12 +1,24 @@
-const mongoose = require('mongoose');
+const createModel = require('./createModel');
+const createRef = require('./createRef');
 
-const { ModelSchema, RefSchema } = require('./schemas');
+const COLLECTION_NAME = 'Workers';
+const MODEL_TYPE = 'Worker';
 
-const Schema = new mongoose.Schema({
-  projectRef: RefSchema,
-  status: Number,
-});
+/**
+ *
+ * @param {Object} fields
+ *   projectID: ID of the parent project.
+ *   status: Status of the worker.
+ */
+function create(fields) {
+  return createModel(MODEL_TYPE, {
+    projectRef: createRef('Project', fields.projectID),
+    status: fields.status,
+  });
+}
 
-Schema.add(ModelSchema);
-
-module.exports = mongoose.model('Worker', Schema);
+module.exports = {
+  COLLECTION_NAME,
+  MODEL_TYPE,
+  create,
+};
