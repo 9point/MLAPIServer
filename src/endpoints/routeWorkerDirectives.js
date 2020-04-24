@@ -1,4 +1,4 @@
-const GRPCMLMessages = require('../static_codegen/mlservice_pb');
+const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
 const WorkerDirective = require('../models/WorkerDirective');
 
@@ -29,14 +29,14 @@ async function routeWorkerDirectives(call) {
       throw Error('Receiving calls from multiple works on same connection.');
     }
 
-    const directive = WorkerDirective.build(
-      GRPCMLMessages.WorkerDirectiveType.TO_SERVER,
-      workerID,
-      payloadKey,
+    const directive = WorkerDirective.create({
+      directiveType: 'TO_SERVER',
       payload,
-    );
+      payloadKey,
+      workerID,
+    });
 
-    await directive.save();
+    await DB.genSetModel(WorkerDirective, directive);
   }
 
   function onEnd() {
@@ -58,16 +58,13 @@ function createHeartbeat(call, workerID) {
   call.on('data', GRPCUtils.ErrorUtils.handleStreamError(call, onData));
 
   async function pulse() {
-    const id = uuidv4();
-    const payloadKey = 'v1.heartbeat.check_pulse';
-    const payload = { id };
-    const directive = WorkerDirective.build(
-      GRPCMLMessages.WorkerDirectiveType.TO_WORKER,
+    const directive = WorkerDirective.create({
+      directiveType: 'TO_WORKER',
+      payload: { id: uuidv4() },
+      payloadKey: 'v1.heartbeat.check_pulse',
       workerID,
-      payloadKey,
-      payload,
-    );
-    await directive.save();
+    });
+    await DB.genSetModel(WorkerDirective, directive);
 
     const message = GRPCUtils.WorkerDirective.createMessage(directive);
     call.write(message);

@@ -8,12 +8,12 @@ const MODEL_TYPE = 'Worker';
  *
  * @param {Object} fields
  *   projectID: ID of the parent project.
- *   status: Status of the worker.
+ *   status: Status of the worker. Default is INITIALIZING.
  */
 function create(fields) {
   return createModel(MODEL_TYPE, {
     projectRef: createRef('Project', fields.projectID),
-    status: fields.status,
+    status: fields.status || 'INITIALIZING',
   });
 }
 

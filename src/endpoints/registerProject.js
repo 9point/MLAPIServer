@@ -1,3 +1,4 @@
+const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
 const Project = require('../models/Project');
 
@@ -5,10 +6,14 @@ async function registerProject(call, callback) {
   console.log('Calling: RegisterProject');
 
   const { request } = call;
-  const projectName = request.getName();
+  const name = request.getName();
   const imageName = request.getImageName();
 
-  let project = await Project.findOne({ isDeleted: false, name: projectName });
+  const query = DB.createQuery(Project, (_) =>
+    _.where('name', '==', name).where('isDeleted', '==', false),
+  );
+
+  let project = await DB.genRunQueryOne(query);
 
   if (project) {
     console.log(`Registering existing project: ${projectName}...`);
@@ -20,18 +25,8 @@ async function registerProject(call, callback) {
 
   console.log(`Registering new project: ${projectName}...`);
 
-  const now = new Date();
-  project = new Project({
-    __modelType__: 'Project',
-    __type__: 'Model',
-    createdAt: now,
-    imageName: imageName,
-    isDeleted: false,
-    name: projectName,
-    updatedAt: now,
-  });
-
-  await project.save();
+  project = Project.create({ imageName, name });
+  await DB.genSetModel(Project, project);
 
   callback(null, GRPCUtils.Project.createMessage(project));
 }

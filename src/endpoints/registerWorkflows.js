@@ -1,3 +1,4 @@
+const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
 const Workflow = require('../models/Workflow');
 
@@ -6,99 +7,89 @@ async function registerWorkflows(call) {
 
   const requests = [];
 
-  call.on(
-    'data',
-    GRPCUtils.ErrorUtils.handleStreamError(call, (request) => {
-      console.log('RegisterWorkflows: Receiving request');
-      requests.push(request);
-    }),
-  );
+  function onData(request) {
+    console.log('RegisterWorkflows: Receiving request');
+    requests.push(request);
+  }
 
-  call.on(
-    'end',
-    GRPCUtils.ErrorUtils.handleStreamError(call, async () => {
-      if (requests.length === 0) {
-        console.error('RegisterWorkflows: Did not receive any requests.');
-        call.end();
-        return;
-      }
+  async function onEnd() {
+    if (requests.length === 0) {
+      throw Error('RegisterWorkflows: Did not receive any requests.');
+    }
 
-      if (hasMultipleRequestsWithSameName(requests)) {
-        console.error(
-          'RegisterWorkflows: Multiple workflows are being registered with the same name.',
-        );
-        call.end();
-        return;
-      }
+    if (hasMultipleRequestsWithSameName(requests)) {
+      throw Error(
+        'RegisterWorkflows: Multiple workflows are being registered with the same name.',
+      );
+    }
 
-      const projectIDs = requests.map((req) => req.getProjectRefId());
-      if (projectIDs.some((id) => id !== projectIDs[0])) {
-        console.error(
-          'RegisterWorkflows: All workflows being registered must belong to the same project.',
-        );
-        call.end();
-        return;
-      }
+    const projectIDs = requests.map((req) => req.getProjectRefId());
+    if (projectIDs.some((id) => id !== projectIDs[0])) {
+      throw Error(
+        'RegisterWorkflows: All workflows being registered must belong to the same project.',
+      );
+    }
 
-      const allWorkflows = await Workflow.find({
-        isDeleted: false,
-        'projectRef.refID': projectIDs[0],
-      });
+    const query = DB.createQuery(Workflow, (_) =>
+      _.where('projectRef.refID', '==', projectIDs[0]).where(
+        'isDeleted',
+        '==',
+        false,
+      ),
+    );
+    const allWorkflows = await DB.genRunQueryOne(query);
 
-      const removedWorkflows = allWorkflows.filter(
-        (wf) => !requests.some((req) => req.getName() === wf.name),
+    const removedWorkflows = allWorkflows.filter(
+      (wf) => !requests.some((req) => req.getName() === wf.name),
+    );
+
+    const existingWorkflows = allWorkflows.filter((wf) =>
+      requests.some((req) => req.getName() === wf.name),
+    );
+
+    const newWorkflows = requests
+      .filter((req) => !allWorkflows.some((wf) => wf.name === req.getName()))
+      .map((req) =>
+        Workflow.create({
+          name: req.getName(),
+          projectID: projectIDs[0],
+        }),
       );
 
-      const existingWorkflows = allWorkflows.filter((wf) =>
-        requests.some((req) => req.getName() === wf.name),
-      );
+    for (const wf of removedWorkflows) {
+      wf.isDeleted = false;
+    }
 
-      const now = new Date();
-      const newWorkflows = requests
-        .filter((req) => !allWorkflows.some((wf) => wf.name === req.getName()))
-        .map((req) => {
-          return new Workflow({
-            __modelType__: 'Workflow',
-            __type__: 'Model',
-            createdAt: now,
-            isDeleted: false,
-            name: req.getName(),
-            projectRef: {
-              __type__: 'Ref',
-              refID: projectIDs[0],
-              refType: 'Project',
-            },
-            updatedAt: now,
-          });
-        });
+    console.log(
+      `RegisterWorkflows: Creating ${newWorkflows.length} workflow(s).`,
+    );
+    console.log(
+      `RegisterWorkflows: Removing ${removedWorkflows.length} workflow(s).`,
+    );
+    console.log(
+      `RegisterWorkflows: ${existingWorkflows.length} unchanged workflow(s).`,
+    );
 
-      for (const wf of removedWorkflows) {
-        wf.isDeleted = false;
-      }
+    const deletePromises = removedWorkflows.map((wf) =>
+      DB.genDeleteModel(Workflow, wf),
+    );
+    const createPromises = newWorkflows.map((wf) =>
+      DB.genSetModel(Workflow, wf),
+    );
 
-      console.log(
-        `RegisterWorkflows: Creating ${newWorkflows.length} workflow(s).`,
-      );
-      console.log(
-        `RegisterWorkflows: Removing ${removedWorkflows.length} workflow(s).`,
-      );
-      console.log(
-        `RegisterWorkflows: ${existingWorkflows.length} unchanged workflow(s).`,
-      );
+    await Promise.all(deletePromises.concat(createPromises));
 
-      await Promise.all(
-        removedWorkflows.concat(newWorkflows).map((wf) => wf.save()),
-      );
+    const currentWorkflows = existingWorkflows.concat(newWorkflows);
+    for (const workflow of currentWorkflows) {
+      const message = GRPCUtils.Workflow.createMessage(workflow);
+      call.write(message);
+    }
 
-      const currentWorkflows = existingWorkflows.concat(newWorkflows);
-      for (const workflow of currentWorkflows) {
-        const message = GRPCUtils.Workflow.createMessage(workflow);
-        call.write(message);
-      }
+    call.end();
+  }
 
-      call.end();
-    }),
-  );
+  call.on('data', GRPCUtils.ErrorUtils.handleStreamError(call, onData));
+  call.on('end', GRPCUtils.ErrorUtils.handleStreamError(call, onEnd));
 }
 
 function hasMultipleRequestsWithSameName(requests) {

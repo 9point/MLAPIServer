@@ -1,4 +1,4 @@
-const GRPCMLMessages = require('../static_codegen/mlservice_pb');
+const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
 const Worker = require('../models/Worker');
 
@@ -7,11 +7,11 @@ async function registerWorker(call, callback) {
 
   const { request } = call;
   const projectID = request.getProjectId();
-  const worker = Worker.build({ projectID });
 
-  await worker.save();
+  const worker = Worker.create({ projectID });
+  await DB.genSetModel(Worker, worker);
 
-  console.log(`RegisterWorker: Saved worker: ${worker._id.toString()}`);
+  console.log(`RegisterWorker: Saved worker: ${worker.id}`);
 
   const message = GRPCUtils.Worker.createMessage(worker);
   callback(null, message);
