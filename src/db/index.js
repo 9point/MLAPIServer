@@ -46,6 +46,24 @@ async function genRunQueryOne(query) {
   return models[0];
 }
 
+function listenQuery(query, cb) {
+  const stop = query.onSnapshot((snapshot) => {
+    const changePartitions = {};
+    snapshot.docChanges().forEach((change) => {
+      const changeType = change.type;
+      if (!changePartitions[changeType]) {
+        changePartitions[changeType] = [];
+      }
+
+      changePartitions[changeType].push(change.doc.data());
+    });
+
+    cb(changePartitions);
+  });
+
+  return { stop };
+}
+
 module.exports = {
   createQuery,
   genDeleteModel,
@@ -53,4 +71,5 @@ module.exports = {
   genRunQuery,
   genRunQueryOne,
   genSetModel,
+  listenQuery,
 };

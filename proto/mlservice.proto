@@ -9,7 +9,7 @@ enum RunStatus {
 }
 
 enum WorkerDirectiveType {
-  TO_SERVER = 0;
+  TO_SERVICE = 0;
   TO_WORKER = 1;
 }
 
