@@ -31,7 +31,7 @@ async function genRunQuery(query) {
   const models = [];
   snapshot.forEach((doc) => {
     if (doc.exists) {
-      models.append(doc.data());
+      models.push(doc.data());
     }
   });
 

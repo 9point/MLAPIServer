@@ -7,11 +7,14 @@ const grpc = require('grpc');
 
 console.log('Initializing firebase connection...');
 
-const firebaseServiceAccount = fs.readFileSync(
-  process.env.FIREBASE_SERVICE_ACCOUNT,
+const firebaseServiceAccount = JSON.parse(
+  fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT).toString(),
 );
 
-FirebaseAdmin.initializeApp(firebaseServiceAccount);
+FirebaseAdmin.initializeApp({
+  credential: FirebaseAdmin.credential.cert(firebaseServiceAccount),
+  databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}.firebaseio.com`,
+});
 
 const port = process.env.PORT || '50051';
 

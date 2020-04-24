@@ -9,13 +9,18 @@ function createMessage(workerDirective) {
   }
 
   const message = new GRPCMLMessages.Obj_WorkerDirective();
-  message.setCreatedAt(Math.floor(workerDirective.createdAt.getTime() / 1000));
+  message.setCreatedAt(
+    Math.floor(workerDirective.createdAt.toDate().getTime() / 1000),
+  );
   message.setDirectiveType(directiveType);
-  message.setId(workerDirective._id.toString());
+  message.setId(workerDirective.id);
   message.setIsDeleted(workerDirective.isDeleted);
   message.setPayload(workerDirective.payload);
   message.setPayloadKey(workerDirective.payloadKey);
   message.setWorkerId(workerDirective.workerRef.refID);
+  message.setUpdatedAt(
+    Math.floor(workerDirective.updatedAt.toDate().getTime() / 1000),
+  )
   return message;
 }
 

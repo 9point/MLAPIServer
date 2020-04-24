@@ -16,14 +16,14 @@ async function registerProject(call, callback) {
   let project = await DB.genRunQueryOne(query);
 
   if (project) {
-    console.log(`Registering existing project: ${projectName}...`);
+    console.log(`Registering existing project: ${name}...`);
     // This project already exists. Check for any updates.
     project = await GRPCUtils.Project.genUpdate(project, request);
     callback(null, GRPCUtils.Project.createMessage(project));
     return;
   }
 
-  console.log(`Registering new project: ${projectName}...`);
+  console.log(`Registering new project: ${name}...`);
 
   project = Project.create({ imageName, name });
   await DB.genSetModel(Project, project);

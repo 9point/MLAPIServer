@@ -2,7 +2,7 @@ const FirebaseAdmin = require('firebase-admin');
 
 const { v4: uuidv4 } = require('uuid');
 
-module.exports = function createModel(type, id, fields) {
+module.exports = function createModel(type, fields) {
   const now = new Date();
   const nowTs = FirebaseAdmin.firestore.Timestamp.fromDate(now);
   return {

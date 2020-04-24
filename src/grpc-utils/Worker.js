@@ -7,11 +7,12 @@ function createMessage(worker) {
   }
 
   const message = new GRPCMLMessages.Obj_Worker();
-  message.setId(worker._id.toString());
-  message.setCreatedAt(Math.floor(worker.createdAt.getTime() / 1000));
+  message.setId(worker.id);
+  message.setCreatedAt(Math.floor(worker.createdAt.toDate().getTime() / 1000));
   message.setIsDeleted(worker.isDeleted);
   message.setProjectId(worker.projectRef.refID);
   message.setStatus(status);
+  message.setUpdatedAt(Math.floor(worker.updatedAt.toDate().getTime() / 1000));
   return message;
 }
 

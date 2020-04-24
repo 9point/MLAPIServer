@@ -15,7 +15,7 @@ async function getProject(call, callback) {
   const project = await DB.genRunQueryOne(query);
 
   if (!project) {
-    callback(Error(`No project named ${projectName} was found.`));
+    callback(Error(`No project named ${name} was found.`));
     return;
   }
 

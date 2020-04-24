@@ -59,7 +59,7 @@ async function registerTasks(call) {
       .map((req) =>
         Task.create({
           name: req.getName(),
-          projectID: projectIds[0],
+          projectID: projectIDs[0],
           version: req.getVersion(),
         }),
       );
@@ -90,7 +90,7 @@ async function registerTasks(call) {
 
     const deletePromises = removedTasks.map((t) => DB.genDeleteModel(Task, t));
     const createPromises = newTasks.map((t) => DB.genSetModel(Task, t));
-    const changePromises = changedTasks((t) => DB.genSetModel(Task, t));
+    const changePromises = changedTasks.map((t) => DB.genSetModel(Task, t));
 
     await Promise.all(
       deletePromises.concat(createPromises).concat(changePromises),

@@ -37,7 +37,7 @@ async function registerWorkflows(call) {
         false,
       ),
     );
-    const allWorkflows = await DB.genRunQueryOne(query);
+    const allWorkflows = await DB.genRunQuery(query);
 
     const removedWorkflows = allWorkflows.filter(
       (wf) => !requests.some((req) => req.getName() === wf.name),

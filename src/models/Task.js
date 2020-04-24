@@ -13,6 +13,8 @@ const MODEL_TYPE = 'Task';
  *   version: Version of the task.
  */
 function create(fields) {
+  console.log('create', fields);
+
   const sv = semver.parse(fields.version);
 
   return createModel(MODEL_TYPE, {
