@@ -13,20 +13,28 @@ class WorkerLifecycleMgr {
     this._subscriptions = [];
   }
 
-  configure() {
+  async configure() {
     assert(!this._isConfigured);
 
-    const workerQuery = DB.createQuery(Worker, (_) =>
-      _.where('isDeleted', '==', false).where('status', 'in', [
-        'IDLE',
-        'INITIALIZING',
-        'WORKING',
-      ]),
+    const ACTIVE_STATUSES = ['IDLE', 'INITIALIZING', 'WORKING'];
+    const query = DB.createQuery(Worker, (_) =>
+      _.where('isDeleted', '==', false).where('status', 'in', ACTIVE_STATUSES),
     );
 
-    this._subscriptions.push(
-      DB.listenQuery(workerQuery, this._onChangeWorkers),
-    );
+    // TODO: BEFORE SETTING UP LISTENER, FETCH ALL WORKERS AND MARK THEM AS
+    // CLOSED.
+
+    // Any workers that exist before this service is run should be deleted.
+    // Note that this won't work well when multiple instances of the service
+    // are running. The purpose of this code is for the service to be started
+    // and stopped without causing a bad state for the workers.
+
+    const workers = await DB.genRunQuery(query);
+    console.log(`Found ${workers.length} worker(s) during initializing.`)
+    await Promise.all(workers.map(w => DB.genDeleteModel(Worker, w)));
+
+    console.log('[LifecycleMgr] Setting up listener for workers...');
+    this._subscriptions.push(DB.listenQuery(query, this._onChangeWorkers));
 
     this._isConfigured = true;
   }
@@ -43,7 +51,6 @@ class WorkerLifecycleMgr {
       }
 
       const payloadKey = request.getPayloadKey();
-      console.log('mgr processing request', payloadKey);
 
       if (payloadKey === 'v1.worker.ready') {
         call.off('data', callback);
@@ -71,8 +78,6 @@ class WorkerLifecycleMgr {
   }
 
   _onChangeWorkers = (change) => {
-    console.log('changing workers');
-
     // TODO: Handle changed and removed workers.
 
     // Handle adding new lifecycles.

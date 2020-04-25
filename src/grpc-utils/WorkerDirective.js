@@ -15,7 +15,7 @@ function createMessage(workerDirective) {
   message.setDirectiveType(directiveType);
   message.setId(workerDirective.id);
   message.setIsDeleted(workerDirective.isDeleted);
-  message.setPayload(workerDirective.payload);
+  message.setPayload(JSON.stringify(workerDirective.payload));
   message.setPayloadKey(workerDirective.payloadKey);
   message.setWorkerId(workerDirective.workerRef.refID);
   message.setUpdatedAt(

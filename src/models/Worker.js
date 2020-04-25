@@ -1,5 +1,6 @@
 const createModel = require('./createModel');
 const createRef = require('./createRef');
+const setModel = require('./setModel');
 
 const COLLECTION_NAME = 'Workers';
 const MODEL_TYPE = 'Worker';
@@ -17,8 +18,18 @@ function create(fields) {
   });
 }
 
+/**
+ *
+ * @param {Object} fields
+ *   status: The status of the worker.
+ */
+function set(model, fields) {
+  return setModel(model, fields);
+}
+
 module.exports = {
   COLLECTION_NAME,
   MODEL_TYPE,
   create,
+  set,
 };

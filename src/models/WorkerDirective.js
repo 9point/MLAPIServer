@@ -1,6 +1,8 @@
 const createModel = require('./createModel');
 const createRef = require('./createRef');
 
+const { v4: uuidv4 } = require('uuid');
+
 const COLLECTION_NAME = 'WorkerDirectives';
 const MODEL_TYPE = 'WorkerDirective';
 
@@ -20,6 +22,45 @@ function create(fields) {
     workerRef: createRef('Worker', fields.workerID),
   });
 }
+
+create.heartbeat = {
+  checkPulse(config) {
+    const { workerID } = config;
+
+    return create({
+      directiveType: 'TO_WORKER',
+      payload: { id: uuidv4() },
+      payloadKey: 'v1.heartbeat.check_pulse',
+      workerID,
+    });
+  },
+};
+
+create.info = {
+  requestStatus(config) {
+    const { workerID } = config;
+
+    return create({
+      directiveType: 'TO_WORKER',
+      payload: {},
+      payloadKey: 'v1.info.check_status',
+      workerID,
+    });
+  },
+};
+
+create.task = {
+  requestStart(config) {
+    const { projectID, taskName, workerID } = config;
+
+    return create({
+      directiveType: 'TO_WORKER',
+      payload: { projectID, taskName },
+      payloadKey: 'v1.task.request_start',
+      workerID,
+    });
+  },
+};
 
 module.exports = {
   COLLECTION_NAME,
