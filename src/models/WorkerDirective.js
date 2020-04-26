@@ -55,7 +55,7 @@ create.task = {
 
     return create({
       directiveType: 'TO_WORKER',
-      payload: { projectID, taskName },
+      payload: { project_id: projectID, task_name: taskName },
       payloadKey: 'v1.task.request_start',
       workerID,
     });
