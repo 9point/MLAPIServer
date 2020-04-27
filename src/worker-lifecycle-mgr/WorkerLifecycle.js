@@ -12,6 +12,7 @@ class WorkerLifecycle {
     this._heartbeatState = null;
     this._isConfigured = false;
     this._listeners = [];
+    this._runningTask = null;
     this._worker = worker;
   }
 
@@ -85,6 +86,7 @@ class WorkerLifecycle {
   // ---------------------------------------------------------------------------
 
   runTask(task) {
+    assert(this._runningTask === null);
     assert(this.status === 'IDLE');
     assert(this._connection);
 
@@ -97,29 +99,40 @@ class WorkerLifecycle {
     const directive = WorkerDirective.create.task.requestStart(config);
 
     this._connection.send(directive);
+    this._runningTask = task;
   }
 
   // ---------------------------------------------------------------------------
   // LISTENERS
   // ---------------------------------------------------------------------------
 
+  onTaskRunStart(cb) {
+    return this._addListener({ cb, event: 'taskRunStart' });
+  }
+
   onTaskRunComplete(cb) {
-    const listener = { cb, event: 'taskRunComplete' };
-    this._listeners.push(listener);
-
-    const stop = () => {
-      const index = this._listeners.indexOf(listnener);
-      if (index < 0) {
-        return;
-      }
-      this._listeners.splice(index, 1);
-    };
-
-    return { stop };
+    return this._addListener({ cb, event: 'taskRunComplete' });
   }
 
   onClose(cb) {
-    const listener = { cb, event: 'connectionClose' };
+    return this._addListener({ cb, event: 'connectionClose' });
+  }
+
+  // ---------------------------------------------------------------------------
+  // PRIVATE HELPERS
+  // ---------------------------------------------------------------------------
+
+  async _setWorkerStatus(status) {
+    if (status === this.status) {
+      return;
+    }
+
+    console.log('[WorkerLifecycle] Setting status to:', status);
+    this._worker = Worker.set(this._worker, { status });
+    await DB.genSetModel(Worker, this._worker);
+  }
+
+  _addListener(listener) {
     this._listeners.push(listener);
 
     const stop = () => {
@@ -132,18 +145,12 @@ class WorkerLifecycle {
     return { stop };
   }
 
-  // ---------------------------------------------------------------------------
-  // PRIVATE HELPERS
-  // ---------------------------------------------------------------------------
-
-  async _setWorkerStatus(status) {
-    if (status === this.status) {
-      return;
+  _sendEvent(name, payload) {
+    for (const listener of this._listeners) {
+      if (listener.event === name) {
+        listener.cb(payload);
+      }
     }
-
-    console.log('setting status to', status);
-    this._worker = Worker.set(this._worker, { status });
-    await DB.genSetModel(Worker, this._worker);
   }
 
   // ---------------------------------------------------------------------------
@@ -161,7 +168,7 @@ class WorkerLifecycle {
       'Must establish connection before starting heartbeat.',
     );
 
-    const HEARTBEAT_INTERVAL_MS = 30000;
+    const HEARTBEAT_INTERVAL_MS = 60000;
 
     const heartbeat = async () => {
       if (!this._connection || !this._heartbeatState) {
@@ -215,11 +222,7 @@ class WorkerLifecycle {
   // ---------------------------------------------------------------------------
 
   _onCloseConnection = () => {
-    for (const listener of this._listeners) {
-      if (listener.event === 'connectionClose') {
-        listener.cb();
-      }
-    }
+    this._sendEvent('connectionClose');
   };
 
   // ---------------------------------------------------------------------------
@@ -243,11 +246,20 @@ class WorkerLifecycle {
   };
 
   _onTaskStarting = (directive) => {
-    console.log('task starting');
+    // TODO: Assert this is the same task that is running.
+    assert(this._runningTask);
+
+    this._sendEvent('taskRunStart', { runningTask: this._runningTask });
   };
 
   _onTaskCompleted = (directive) => {
-    console.log('task completed');
+    // TODO: Assert this is the same task that is running.
+    assert(this._runningTask);
+
+    const runningTask = this._runningTask;
+    this._runningTask = null;
+
+    this._sendEvent('taskRunComplete', { runningTask });
   };
 }
 

@@ -7,7 +7,7 @@ const MODEL_TYPE = 'WorkflowRun';
 /**
  *
  * @param {Object} fields
- *   workerID: ID of the worker this directive is associated with.
+ *   workflowID: ID of the workflow this run is associated with.
  */
 function create(fields) {
   return createModel(MODEL_TYPE, {

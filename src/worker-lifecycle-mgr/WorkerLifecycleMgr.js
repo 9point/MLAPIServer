@@ -4,6 +4,7 @@ const Task = require('../models/Task');
 const Worker = require('../models/Worker');
 const WorkerLifecycle = require('./WorkerLifecycle');
 const WorkflowRun = require('../models/WorkflowRun');
+const WorkflowRunState = require('../models/WorkflowRunState');
 
 const assert = require('assert');
 
@@ -13,7 +14,12 @@ class WorkerLifecycleMgr {
     this._lifecycles = [];
     this._pendingConnectionConfigurations = [];
     this._subscriptions = [];
+    this._workflowRunMgr = {};
   }
+
+  // ---------------------------------------------------------------------------
+  // SETUP
+  // ---------------------------------------------------------------------------
 
   async configure() {
     assert(!this._isConfigured);
@@ -30,19 +36,87 @@ class WorkerLifecycleMgr {
 
     const workers = await DB.genRunQuery(query);
     console.log(
-      `[LifecycleMgr] Found ${workers.length} worker(s) during initializing.`,
+      `[WorkerLifecycleMgr] Found ${workers.length} worker(s) during initializing.`,
     );
     await Promise.all(workers.map((w) => DB.genDeleteModel(Worker, w)));
 
-    console.log('[LifecycleMgr] Setting up listener for workers...');
+    console.log('[WorkerLifecycleMgr] Setting up listener for workers...');
     this._subscriptions.push(DB.listenQuery(query, this._onChangeWorkers));
 
     this._isConfigured = true;
   }
 
+  // ---------------------------------------------------------------------------
+  // CONNECTION
+  // ---------------------------------------------------------------------------
+
   registerDirectiveRouter(call) {
     this._waitForClientReady(call);
   }
+
+  _waitForClientReady(call) {
+    const onData = (request) => {
+      if (isDone) {
+        return;
+      }
+
+      const payloadKey = request.getPayloadKey();
+
+      if (payloadKey === 'v1.worker.ready') {
+        call.off('data', callback);
+        const config = { call, workerID: request.getWorkerId() };
+        this._pendingConnectionConfigurations.push(config);
+        this._checkForResolvedConnections();
+      }
+    };
+
+    let isDone = false;
+    const callback = GRPCUtils.ErrorUtils.handleStreamError(call, onData);
+    call.on('data', callback);
+  }
+
+  _connect(config) {
+    const lifecycle = this._lifecycles.find(
+      (lc) => lc.worker.id === config.workerID,
+    );
+
+    if (!lifecycle) {
+      throw Error(`No lifecycle for worker: ${config.workerID}`);
+    }
+
+    lifecycle.startConnection(config);
+  }
+
+  _checkForResolvedConnections() {
+    const resolvedConfigs = [];
+
+    for (const config of this._pendingConnectionConfigurations) {
+      const { workerID } = config;
+
+      const lifecycle = this._lifecycles.find(
+        (lc) => lc.worker.id === workerID,
+      );
+
+      if (lifecycle) {
+        lifecycle.startConnection(config);
+        resolvedConfigs.push(config);
+      }
+    }
+
+    if (this._pendingConnectionConfigurations.length > 0) {
+      console.log(
+        `${resolvedConfigs.length} of ${this._pendingConnectionConfigurations.length} connection(s) resolved.`,
+      );
+    }
+
+    this._pendingConnectionConfigurations = this._pendingConnectionConfigurations.filter(
+      (config) => !resolvedConfigs.includes(config),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // PUBLIC METHODS
+  // ---------------------------------------------------------------------------
 
   async genRunWorkflow(workflow) {
     // Check for any workers that exist for the current project.
@@ -82,42 +156,29 @@ class WorkerLifecycleMgr {
 
     const workflowID = workflow.id;
     const workflowRun = WorkflowRun.create({ workflowID });
-    await DB.genSetModel(WorkflowRun, workflowRun);
+    const workflowRunState = WorkflowRunState.create({
+      workflowRunID: workflowRun.id,
+    });
+
+    await Promise.all([
+      DB.genSetModel(WorkflowRun, workflowRun),
+      DB.genSetModel(WorkflowRunState, workflowRunState),
+    ]);
+
+    this._workflowRunMgr[workflowRun.id] = {
+      lifecycles: [lifecycles[0]],
+      projectID,
+      workflow,
+      workflowRun,
+      workflowRunState,
+    };
+
     return workflowRun;
   }
 
-  _waitForClientReady(call) {
-    const onData = (request) => {
-      if (isDone) {
-        return;
-      }
-
-      const payloadKey = request.getPayloadKey();
-
-      if (payloadKey === 'v1.worker.ready') {
-        call.off('data', callback);
-        const config = { call, workerID: request.getWorkerId() };
-        this._pendingConnectionConfigurations.push(config);
-        this._checkForResolvedConnections();
-      }
-    };
-
-    let isDone = false;
-    const callback = GRPCUtils.ErrorUtils.handleStreamError(call, onData);
-    call.on('data', callback);
-  }
-
-  _connect(config) {
-    const lifecycle = this._lifecycles.find(
-      (lc) => lc.worker.id === config.workerID,
-    );
-
-    if (!lifecycle) {
-      throw Error(`No lifecycle for worker: ${config.workerID}`);
-    }
-
-    lifecycle.startConnection(config);
-  }
+  // ---------------------------------------------------------------------------
+  // EVENTS / CALLBACKS
+  // ---------------------------------------------------------------------------
 
   _onChangeWorkers = (change) => {
     // TODO: Handle changed and removed workers.
@@ -136,6 +197,10 @@ class WorkerLifecycleMgr {
 
       this._lifecycles.push(lifecycle);
       this._subscriptions.push(
+        lifecycle.onTaskRunStart(this._onTaskRunStart.bind(this, lifecycle)),
+        lifecycle.onTaskRunComplete(
+          this._onTaskRunComplete.bind(this, lifecycle),
+        ),
         lifecycle.onClose(this._onCloseLifecycle.bind(this, lifecycle)),
       );
     }
@@ -158,32 +223,39 @@ class WorkerLifecycleMgr {
     );
   };
 
-  _checkForResolvedConnections() {
-    const resolvedConfigs = [];
+  _onTaskRunStart = async (lifecycle, task) => {
+    console.log('[WorkerLifecycleMgr] Started task');
 
-    for (const config of this._pendingConnectionConfigurations) {
-      const { workerID } = config;
+    const runDetails = Object.values(this._workflowRunMgr).find((details) => {
+      return details.lifecycles.includes(lifecycle);
+    });
 
-      const lifecycle = this._lifecycles.find(
-        (lc) => lc.worker.id === workerID,
-      );
+    assert(runDetails);
 
-      if (lifecycle) {
-        lifecycle.startConnection(config);
-        resolvedConfigs.push(config);
-      }
-    }
-
-    if (this._pendingConnectionConfigurations.length > 0) {
-      console.log(
-        `${resolvedConfigs.length} of ${this._pendingConnectionConfigurations.length} connection(s) resolved.`,
-      );
-    }
-
-    this._pendingConnectionConfigurations = this._pendingConnectionConfigurations.filter(
-      (config) => !resolvedConfigs.includes(config),
+    const workflowRunState = WorkflowRunState.addActiveTaskIDs(
+      runDetails.workflowRunState,
+      task.id,
     );
-  }
+
+    await DB.genSetModel(WorkflowRunState, workflowRunState);
+  };
+
+  _onTaskRunComplete = async (lifecycle, task) => {
+    console.log('[WorkerLifecycleMgr] Completed task');
+
+    const runDetails = Object.values(this._workflowRunMgr).find((details) => {
+      return details.lifecycles.includes(lifecycle);
+    });
+
+    assert(runDetails);
+
+    const workflowRunState = WorkflowRunState.addCompletedTaskIDs(
+      runDetails.workflowRunState,
+      task.id,
+    );
+
+    await DB.genSetModel(WorkflowRunState, workflowRunState);
+  };
 }
 
 module.exports = WorkerLifecycleMgr;
