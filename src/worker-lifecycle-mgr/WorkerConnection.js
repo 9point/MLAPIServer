@@ -66,6 +66,10 @@ class WorkerConnection {
 
   send(directive) {
     assert(this._isConfigured);
+    console.log(
+      `[WorkerConnection] Sending directive: ${directive.payloadKey}`,
+    );
+
     const message = GRPCUtils.WorkerDirective.createMessage(directive);
     this._config.call.write(message);
   }
@@ -74,13 +78,13 @@ class WorkerConnection {
     const listener = { cb };
     this._closeListeners.push(listener);
 
-    function stop() {
+    const stop = () => {
       const index = this._closeListeners.indexOf(listener);
       if (index < 0) {
         return;
       }
       this._closeListeners.splice(index, 1);
-    }
+    };
 
     return { stop };
   }
@@ -89,13 +93,13 @@ class WorkerConnection {
     const listener = { cb, payloadKey };
     this._directiveListeners.push(listener);
 
-    function stop() {
+    const stop = () => {
       const index = this._directiveListeners.indexOf(listener);
       if (index < 0) {
         return;
       }
       this._directiveListeners.splice(index, 1);
-    }
+    };
 
     return { stop };
   }

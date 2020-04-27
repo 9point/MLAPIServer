@@ -1,39 +1,31 @@
 const DB = require('../db');
-const GRPCMLMessages = require('../static_codegen/mlservice_pb');
 const GRPCUtils = require('../grpc-utils');
-const Worker = require('../models/Worker');
+const WorkerLifecycleMgr = require('../worker-lifecycle-mgr');
 const Workflow = require('../models/Workflow');
-const WorkflowRun = require('../models/WorkflowRun');
 
 async function runWorkflow(call, callback) {
   console.log('RunWorkflow: Calling');
 
   const { request } = call;
-  const workflowID = request.getWorkflowId();
+  const projectID = request.getProjectId();
+  const workflowName = request.getWorkflowName();
 
-  const workflow = await DB.genFetchModel(Workflow, workflowID);
-
-  if (!workflow) {
-    throw Error(`No workflow found with id ${workflowID}`);
-  }
-
-  const projectID = workflow.projectRef.refID;
-
-  const query = DB.createQuery(Worker, (_) =>
-    _.where('projectRef.refID', '==', projectID)
-      .where('status', 'in', ['INITIALIZING', 'IDLE', 'WORKING'])
-      .where('isDeleted', '==', false),
+  const query = DB.createQuery(Workflow, (_) =>
+    _.where('isDeleted', '==', false)
+      .where('projectRef.refID', '==', projectID)
+      .where('name', '==', workflowName),
   );
 
-  const workers = await DB.genRunQuery(query);
+  const workflow = await DB.genRunQueryOne(query);
 
-  if (workers.length === 0) {
-    throw Error(
-      `No usable workers found for project: ${projectID}. Must initialize a worker.`,
-    );
+  if (!workflow) {
+    throw Error(`No workflow named ${workflowName} in project ${projectID}`);
   }
 
-  console.log(`RunWorkflow: Found ${workers.length} usable worker(s).`);
+  const workflowRun = await WorkerLifecycleMgr.genRunWorkflow(workflow);
+  const message = GRPCUtils.WorkflowRun.createMessage(workflowRun);
+
+  callback(null, message);
 }
 
 module.exports = runWorkflow;

@@ -11,8 +11,13 @@ class WorkerLifecycle {
     this._connectionSubscriptions = [];
     this._heartbeatState = null;
     this._isConfigured = false;
+    this._listeners = [];
     this._worker = worker;
   }
+
+  // ---------------------------------------------------------------------------
+  // GETTERS
+  // ---------------------------------------------------------------------------
 
   get worker() {
     return this._worker;
@@ -26,14 +31,25 @@ class WorkerLifecycle {
     return this._worker.projectRef.refID;
   }
 
+  // ---------------------------------------------------------------------------
+  // SETUP
+  // ---------------------------------------------------------------------------
+
   configure() {
+    console.log('[WorkerLifecycle] Configuring...');
     assert(!this._isConfigured);
     this._isConfigured = true;
   }
 
   cleanup() {
+    console.log('[WorkerLifecycle] Cleaning up...');
     this._connectionSubscriptions.forEach((s) => s.stop());
     this._connectionSubscriptions = [];
+    this._listeners = [];
+
+    if (this._connection) {
+      this._connection.stop();
+    }
   }
 
   startConnection(config) {
@@ -64,7 +80,67 @@ class WorkerLifecycle {
     return connection;
   }
 
+  // ---------------------------------------------------------------------------
+  // PUBLIC METHODS
+  // ---------------------------------------------------------------------------
+
+  runTask(task) {
+    assert(this.status === 'IDLE');
+    assert(this._connection);
+
+    const config = {
+      projectID: task.projectRef.refID,
+      taskName: task.name,
+      workerID: this._worker.id,
+    };
+
+    const directive = WorkerDirective.create.task.requestStart(config);
+
+    this._connection.send(directive);
+  }
+
+  // ---------------------------------------------------------------------------
+  // LISTENERS
+  // ---------------------------------------------------------------------------
+
+  onTaskRunComplete(cb) {
+    const listener = { cb, event: 'taskRunComplete' };
+    this._listeners.push(listener);
+
+    const stop = () => {
+      const index = this._listeners.indexOf(listnener);
+      if (index < 0) {
+        return;
+      }
+      this._listeners.splice(index, 1);
+    };
+
+    return { stop };
+  }
+
+  onClose(cb) {
+    const listener = { cb, event: 'connectionClose' };
+    this._listeners.push(listener);
+
+    const stop = () => {
+      const index = this._listeners.indexOf(listener);
+      if (index < 0) {
+        return;
+      }
+      this._listeners.splice(index, 1);
+    };
+    return { stop };
+  }
+
+  // ---------------------------------------------------------------------------
+  // PRIVATE HELPERS
+  // ---------------------------------------------------------------------------
+
   async _setWorkerStatus(status) {
+    if (status === this.status) {
+      return;
+    }
+
     console.log('setting status to', status);
     this._worker = Worker.set(this._worker, { status });
     await DB.genSetModel(Worker, this._worker);
@@ -85,7 +161,7 @@ class WorkerLifecycle {
       'Must establish connection before starting heartbeat.',
     );
 
-    const HEARTBEAT_INTERVAL_MS = 10000;
+    const HEARTBEAT_INTERVAL_MS = 30000;
 
     const heartbeat = async () => {
       if (!this._connection || !this._heartbeatState) {
@@ -95,25 +171,10 @@ class WorkerLifecycle {
         return;
       }
 
-      // First check for any pulses that have not been responded to. If
-      // any are found, mark the worker as non-responsive.
       const isUnresponsive = Object.keys(this._heartbeatState).length > 0;
 
       if (isUnresponsive) {
         this._setWorkerStatus('UNRESPONSIVE');
-      }
-
-      if (!isUnresponsive && this.status === 'INITIALIZING') {
-        this._setWorkerStatus('IDLE');
-      }
-
-      if (!isUnresponsive && this.status === 'UNRESPONSIVE') {
-        // If a worker is marked as unresponsive, but then becomes responsive,
-        // need to update its status.
-        const requestStatus = WorkerDirective.create.heartbeat.checkStatus({
-          workerID: this._worker.id,
-        });
-        this._connection.send(requestStatus);
       }
 
       // Send a pulse and record the id of the pulse in the state.
@@ -127,9 +188,14 @@ class WorkerLifecycle {
     };
 
     const timeoutID = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
-    function stop() {
+
+    // In addition to scheduling the heartbeat interval, we should do an
+    // initial call.
+    heartbeat();
+
+    const stop = () => {
       clearInterval(timeoutID);
-    }
+    };
 
     return { stop };
   }
@@ -149,7 +215,11 @@ class WorkerLifecycle {
   // ---------------------------------------------------------------------------
 
   _onCloseConnection = () => {
-    console.log('connection closed');
+    for (const listener of this._listeners) {
+      if (listener.event === 'connectionClose') {
+        listener.cb();
+      }
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -167,25 +237,17 @@ class WorkerLifecycle {
     }
 
     // TODO: Add proper type checking and error handling for the payload.
-    const { id } = directive.payload;
-    delete this._heartbeatState[id];
+    const { status } = directive.payload;
+    this._heartbeatState = {};
+    this._setWorkerStatus(status);
   };
 
   _onTaskStarting = (directive) => {
     console.log('task starting');
-    this._setWorkerStatus('WORKING');
   };
 
   _onTaskCompleted = (directive) => {
     console.log('task completed');
-    this._setWorkerStatus('IDLE');
-  };
-
-  _onTaskGiveStatus = (directive) => {
-    console.log('giving status');
-    // TODO: Add proper type checking and error handling for payload.
-    const { status } = directive.payload;
-    this._setWorkerStatus(status);
   };
 }
 

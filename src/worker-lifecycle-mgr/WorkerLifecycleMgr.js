@@ -1,7 +1,9 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
+const Task = require('../models/Task');
 const Worker = require('../models/Worker');
 const WorkerLifecycle = require('./WorkerLifecycle');
+const WorkflowRun = require('../models/WorkflowRun');
 
 const assert = require('assert');
 
@@ -21,17 +23,16 @@ class WorkerLifecycleMgr {
       _.where('isDeleted', '==', false).where('status', 'in', ACTIVE_STATUSES),
     );
 
-    // TODO: BEFORE SETTING UP LISTENER, FETCH ALL WORKERS AND MARK THEM AS
-    // CLOSED.
-
     // Any workers that exist before this service is run should be deleted.
     // Note that this won't work well when multiple instances of the service
     // are running. The purpose of this code is for the service to be started
     // and stopped without causing a bad state for the workers.
 
     const workers = await DB.genRunQuery(query);
-    console.log(`Found ${workers.length} worker(s) during initializing.`)
-    await Promise.all(workers.map(w => DB.genDeleteModel(Worker, w)));
+    console.log(
+      `[LifecycleMgr] Found ${workers.length} worker(s) during initializing.`,
+    );
+    await Promise.all(workers.map((w) => DB.genDeleteModel(Worker, w)));
 
     console.log('[LifecycleMgr] Setting up listener for workers...');
     this._subscriptions.push(DB.listenQuery(query, this._onChangeWorkers));
@@ -43,9 +44,50 @@ class WorkerLifecycleMgr {
     this._waitForClientReady(call);
   }
 
+  async genRunWorkflow(workflow) {
+    // Check for any workers that exist for the current project.
+
+    // TODO: For now, workers need to be online and ready for a workflow
+    // to be run. Could support in the future the ability to have a workflow
+    // run pending for a set of workers.
+
+    const projectID = workflow.projectRef.refID;
+    const lifecycles = this._lifecycles.filter(
+      (lc) => lc.projectID === projectID && lc.status === 'IDLE',
+    );
+
+    if (lifecycles.length === 0) {
+      throw Error(
+        `Cannot run workflow ${workflow.id}. There are no idle workers.`,
+      );
+    }
+
+    // For now, we are assuming there is 1 task per workflow.
+    // So we just need to find the task associated with the workflow and
+    // run it with one of the available workers.
+    const taskQuery = DB.createQuery(Task, (_) =>
+      _.where('isDeleted', '==', false).where(
+        'projectRef.refID',
+        '==',
+        projectID,
+      ),
+    );
+    const task = await DB.genRunQueryOne(taskQuery);
+
+    if (!task) {
+      throw Error(`No task found for project ${projectID}`);
+    }
+
+    lifecycles[0].runTask(task);
+
+    const workflowID = workflow.id;
+    const workflowRun = WorkflowRun.create({ workflowID });
+    await DB.genSetModel(WorkflowRun, workflowRun);
+    return workflowRun;
+  }
+
   _waitForClientReady(call) {
     const onData = (request) => {
-      console.log('request received by lc mgr');
       if (isDone) {
         return;
       }
@@ -93,14 +135,30 @@ class WorkerLifecycleMgr {
       lifecycle.configure();
 
       this._lifecycles.push(lifecycle);
+      this._subscriptions.push(
+        lifecycle.onClose(this._onCloseLifecycle.bind(this, lifecycle)),
+      );
     }
 
     this._checkForResolvedConnections();
   };
 
-  _checkForResolvedConnections() {
-    console.log('checking for resolved connections');
+  _onCloseLifecycle = async (lifecycle) => {
+    const worker = lifecycle.worker;
+    await DB.genDeleteModel(Worker, worker);
+    lifecycle.cleanup();
 
+    const index = this._lifecycles.indexOf(lifecycle);
+    if (index >= 0) {
+      this._lifecycles.splice(index, 1);
+    }
+
+    console.log(
+      `Lifecycle closed. Total remaining: ${this._lifecycles.length}`,
+    );
+  };
+
+  _checkForResolvedConnections() {
     const resolvedConfigs = [];
 
     for (const config of this._pendingConnectionConfigurations) {
@@ -116,9 +174,11 @@ class WorkerLifecycleMgr {
       }
     }
 
-    console.log(
-      `${resolvedConfigs.length} of ${this._pendingConnectionConfigurations.length} connection(s) resolved.`,
-    );
+    if (this._pendingConnectionConfigurations.length > 0) {
+      console.log(
+        `${resolvedConfigs.length} of ${this._pendingConnectionConfigurations.length} connection(s) resolved.`,
+      );
+    }
 
     this._pendingConnectionConfigurations = this._pendingConnectionConfigurations.filter(
       (config) => !resolvedConfigs.includes(config),
