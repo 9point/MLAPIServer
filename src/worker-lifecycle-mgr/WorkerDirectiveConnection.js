@@ -4,10 +4,11 @@ const WorkerDirective = require('../models/WorkerDirective');
 
 const assert = require('assert');
 
-class WorkerConnection {
+class WorkerDirectiveConnection {
   constructor(worker) {
     this._closeListeners = [];
     this._config = null;
+    this._isClosed = false;
     this._isConfigured = false;
     this._isStopped = false;
     this._directiveListeners = [];
@@ -17,15 +18,11 @@ class WorkerConnection {
   configure(config) {
     assert(!this._isConfigured);
     assert(!this._isStopped);
+    assert(!this._isClosed);
 
-    config.call.on(
-      'data',
-      GRPCUtils.ErrorUtils.handleStreamError(config.call, this._onData),
-    );
-    config.call.on(
-      'end',
-      GRPCUtils.ErrorUtils.handleStreamError(config.call, this._onEnd),
-    );
+    const { call } = config;
+    call.on('data', GRPCUtils.ErrorUtils.handleStreamError(call, this._onData));
+    call.on('end', GRPCUtils.ErrorUtils.handleStreamError(call, this._onEnd));
 
     this._config = config;
     this._isConfigured = true;
@@ -59,6 +56,9 @@ class WorkerConnection {
   };
 
   _onEnd = () => {
+    this._isConfigured = false;
+    this._isClosed = true;
+
     for (const listener of this._closeListeners) {
       listener.cb();
     }
@@ -66,8 +66,10 @@ class WorkerConnection {
 
   send(directive) {
     assert(this._isConfigured);
+    assert(this._config);
+
     console.log(
-      `[WorkerConnection] Sending directive: ${directive.payloadKey}`,
+      `[WorkerDirectiveConnection] Sending directive: ${directive.payloadKey}`,
     );
 
     const message = GRPCUtils.WorkerDirective.createMessage(directive);
@@ -105,4 +107,4 @@ class WorkerConnection {
   }
 }
 
-module.exports = WorkerConnection;
+module.exports = WorkerDirectiveConnection;

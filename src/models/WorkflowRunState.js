@@ -44,35 +44,35 @@ function set(model, fields) {
 }
 
 function addActiveTaskIDs(model, ids) {
-  const completedTaskRefs = model.completedTaskRefs.filter(
-    (ref) => !ids.includes(ref.refID),
-  );
+  const completedTaskIDs = model.completedTaskRefs
+    .filter((ref) => !ids.includes(ref.refID))
+    .map((ref) => ref.refID);
 
   const newIDs = ids.filter(
     (id) => !model.activeTaskRefs.some((ref) => ref.refID === id),
   );
 
-  const newRefs = newIDs.map((id) => createRef('Task', id));
+  const activeTaskIDs = model.activeTaskRefs
+    .map((ref) => ref.refID)
+    .concat(newIDs);
 
-  const activeTaskRefs = model.activeTaskRefs.concat(newRefs);
-
-  return set(model, { activeTaskRefs, completedTaskRefs });
+  return set(model, { activeTaskIDs, completedTaskIDs });
 }
 
 function addCompletedTaskIDs(model, ids) {
-  const activeTaskRefs = model.activeTaskRefs.filter(
-    (ref) => !ids.includes(ref.refID),
-  );
+  const activeTaskIDs = model.activeTaskRefs
+    .filter((ref) => !ids.includes(ref.refID))
+    .map((ref) => ref.refID);
 
   const newIDs = ids.filter(
-    (id) => !model.addCompletedTaskRefs.some((ref) => ref.refID === id),
+    (id) => !model.completedTaskRefs.some((ref) => ref.refID === id),
   );
 
-  const newRefs = newIDs.map((id) => createRef('Task', id));
+  const completedTaskIDs = model.completedTaskRefs
+    .map((ref) => ref.refID)
+    .concat(newIDs);
 
-  const completedTaskRefs = model.completedTaskRefs.concat(newRefs);
-
-  return set(model, { activeTaskRefs, completedTaskRefs });
+  return set(model, { activeTaskIDs, completedTaskIDs });
 }
 
 module.exports = {

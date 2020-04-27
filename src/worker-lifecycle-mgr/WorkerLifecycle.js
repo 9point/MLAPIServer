@@ -1,14 +1,14 @@
 const DB = require('../db');
 const Worker = require('../models/Worker');
-const WorkerConnection = require('./WorkerConnection');
 const WorkerDirective = require('../models/WorkerDirective');
+const WorkerDirectiveConnection = require('./WorkerDirectiveConnection');
 
 const assert = require('assert');
 
 class WorkerLifecycle {
   constructor(worker) {
-    this._connection = null;
-    this._connectionSubscriptions = [];
+    this._directiveConnection = null;
+    this._directiveConnectionSubscriptions = [];
     this._heartbeatState = null;
     this._isConfigured = false;
     this._listeners = [];
@@ -44,36 +44,35 @@ class WorkerLifecycle {
 
   cleanup() {
     console.log('[WorkerLifecycle] Cleaning up...');
-    this._connectionSubscriptions.forEach((s) => s.stop());
-    this._connectionSubscriptions = [];
+    this._directiveConnectionSubscriptions.forEach((s) => s.stop());
+    this._directiveConnectionSubscriptions = [];
     this._listeners = [];
 
-    if (this._connection) {
-      this._connection.stop();
-    }
+    this._directiveConnection && this._directiveConnection.stop();
   }
 
-  startConnection(config) {
+  startDirectiveConnection(config) {
     assert(config.workerID === this.worker.id);
 
-    if (this._connection) {
-      this._connection.stop();
-      this._connection = null;
-      this._connectionSubscriptions.forEach((s) => s.stop());
-      this._connectionSubscriptions = [];
+    if (this._directiveConnection) {
+      this._directiveConnection.stop();
+      this._directiveConnection = null;
+      this._directiveConnectionSubscriptions.forEach((s) => s.stop());
+      this._directiveConnectionSubscriptions = [];
     }
 
-    const connection = new WorkerConnection(this.worker);
+    const connection = new WorkerDirectiveConnection(this.worker);
     connection.configure(config);
 
-    this._connection = connection;
+    this._directiveConnection = connection;
 
-    this._connectionSubscriptions.push(
+    this._directiveConnectionSubscriptions.push(
       connection.onDirective('v1.heartbeat.give_pulse', this._onHeartbeatPulse),
       connection.onDirective('v1.info.give_status', this._onTaskStatus),
+      connection.onDirective('v1.log', this._onLog),
       connection.onDirective('v1.task.completed', this._onTaskCompleted),
       connection.onDirective('v1.task.starting', this._onTaskStarting),
-      connection.onClose(this._onCloseConnection),
+      connection.onClose(this._onCloseDirectiveConnection),
       this._createHeartbeatState(),
       this._startHeartbeat(),
     );
@@ -88,7 +87,7 @@ class WorkerLifecycle {
   runTask(task) {
     assert(this._runningTask === null);
     assert(this.status === 'IDLE');
-    assert(this._connection);
+    assert(this._directiveConnection);
 
     const config = {
       projectID: task.projectRef.refID,
@@ -98,7 +97,7 @@ class WorkerLifecycle {
 
     const directive = WorkerDirective.create.task.requestStart(config);
 
-    this._connection.send(directive);
+    this._directiveConnection.send(directive);
     this._runningTask = task;
   }
 
@@ -164,14 +163,14 @@ class WorkerLifecycle {
     );
 
     assert(
-      this._connection,
+      this._directiveConnection,
       'Must establish connection before starting heartbeat.',
     );
 
     const HEARTBEAT_INTERVAL_MS = 60000;
 
     const heartbeat = async () => {
-      if (!this._connection || !this._heartbeatState) {
+      if (!this._directiveConnection || !this._heartbeatState) {
         // If for any reason, the connection has been closed and the heartbeat
         // has not yet been cleaned up, need to make sure not to execute
         // heartbeat directive.
@@ -190,7 +189,7 @@ class WorkerLifecycle {
       });
 
       await DB.genSetModel(WorkerDirective, directive);
-      this._connection.send(directive);
+      this._directiveConnection.send(directive);
       this._heartbeatState[directive.payload.id] = true;
     };
 
@@ -221,13 +220,17 @@ class WorkerLifecycle {
   // CALLBACKS
   // ---------------------------------------------------------------------------
 
-  _onCloseConnection = () => {
+  _onCloseDirectiveConnection = () => {
     this._sendEvent('connectionClose');
   };
 
   // ---------------------------------------------------------------------------
   // DIRECTIVE ROUTING
   // ---------------------------------------------------------------------------
+
+  _onLog = (directive) => {
+    console.log('[WorkerLifecycle] Received log.');
+  };
 
   _onHeartbeatPulse = (directive) => {
     if (!this._heartbeatState) {
@@ -249,17 +252,17 @@ class WorkerLifecycle {
     // TODO: Assert this is the same task that is running.
     assert(this._runningTask);
 
-    this._sendEvent('taskRunStart', { runningTask: this._runningTask });
+    this._sendEvent('taskRunStart', { task: this._runningTask });
   };
 
   _onTaskCompleted = (directive) => {
     // TODO: Assert this is the same task that is running.
     assert(this._runningTask);
 
-    const runningTask = this._runningTask;
+    const task = this._runningTask;
     this._runningTask = null;
 
-    this._sendEvent('taskRunComplete', { runningTask });
+    this._sendEvent('taskRunComplete', { task });
   };
 }
 

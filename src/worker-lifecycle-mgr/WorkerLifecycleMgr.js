@@ -51,10 +51,7 @@ class WorkerLifecycleMgr {
   // ---------------------------------------------------------------------------
 
   registerDirectiveRouter(call) {
-    this._waitForClientReady(call);
-  }
-
-  _waitForClientReady(call) {
+    // Wait for a ready signal from the worker.
     const onData = (request) => {
       if (isDone) {
         return;
@@ -75,18 +72,6 @@ class WorkerLifecycleMgr {
     call.on('data', callback);
   }
 
-  _connect(config) {
-    const lifecycle = this._lifecycles.find(
-      (lc) => lc.worker.id === config.workerID,
-    );
-
-    if (!lifecycle) {
-      throw Error(`No lifecycle for worker: ${config.workerID}`);
-    }
-
-    lifecycle.startConnection(config);
-  }
-
   _checkForResolvedConnections() {
     const resolvedConfigs = [];
 
@@ -98,7 +83,7 @@ class WorkerLifecycleMgr {
       );
 
       if (lifecycle) {
-        lifecycle.startConnection(config);
+        lifecycle.startDirectiveConnection(config);
         resolvedConfigs.push(config);
       }
     }
@@ -223,8 +208,10 @@ class WorkerLifecycleMgr {
     );
   };
 
-  _onTaskRunStart = async (lifecycle, task) => {
+  _onTaskRunStart = async (lifecycle, payload) => {
     console.log('[WorkerLifecycleMgr] Started task');
+
+    const { task } = payload;
 
     const runDetails = Object.values(this._workflowRunMgr).find((details) => {
       return details.lifecycles.includes(lifecycle);
@@ -234,14 +221,16 @@ class WorkerLifecycleMgr {
 
     const workflowRunState = WorkflowRunState.addActiveTaskIDs(
       runDetails.workflowRunState,
-      task.id,
+      [task.id],
     );
 
     await DB.genSetModel(WorkflowRunState, workflowRunState);
   };
 
-  _onTaskRunComplete = async (lifecycle, task) => {
+  _onTaskRunComplete = async (lifecycle, payload) => {
     console.log('[WorkerLifecycleMgr] Completed task');
+
+    const { task } = payload;
 
     const runDetails = Object.values(this._workflowRunMgr).find((details) => {
       return details.lifecycles.includes(lifecycle);
@@ -251,7 +240,7 @@ class WorkerLifecycleMgr {
 
     const workflowRunState = WorkflowRunState.addCompletedTaskIDs(
       runDetails.workflowRunState,
-      task.id,
+      [task.id],
     );
 
     await DB.genSetModel(WorkflowRunState, workflowRunState);
