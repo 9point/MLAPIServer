@@ -1,3 +1,4 @@
+#!/bin/bash
 
 SERVICE_NAME=$(cat package.json \
 	| grep name \

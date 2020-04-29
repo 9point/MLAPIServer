@@ -1,4 +1,8 @@
 #!/bin/bash
+#!/usr/bin/env bash
+
+# NOTE: This script assumes environment variables AWS_ACCESS_KEY_ID
+# and AWS_SECRET_ACCESS_KEY are properly set for storage access.
 
 SERVICE_NAME=$(cat package.json \
 	| grep name \
