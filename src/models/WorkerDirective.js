@@ -51,11 +51,11 @@ create.info = {
 
 create.task = {
   requestStart(config) {
-    const { projectID, taskName, workerID } = config;
+    const { projectID, taskName, workerID, workflowRunID } = config;
 
     return create({
       directiveType: 'TO_WORKER',
-      payload: { project_id: projectID, task_name: taskName },
+      payload: { projectID, taskName, workflowRunID },
       payloadKey: 'v1.task.request_start',
       workerID,
     });

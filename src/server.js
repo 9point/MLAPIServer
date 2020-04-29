@@ -21,11 +21,12 @@ console.log('[Service] Configuring Worker Lifecycle Manager...');
 WorkerLifecycleMgr.configure();
 
 const port = process.env.PORT || '50051';
+const address = process.env.ADDRESS || 'localhost';
 
 const server = new grpc.Server();
 server.addService(GRPCMLServices.MLService, Endpoints);
 
-server.bind(`localhost:${port}`, grpc.ServerCredentials.createInsecure());
+server.bind(`${address}:${port}`, grpc.ServerCredentials.createInsecure());
 server.start();
 
-console.log(`[Service] Listening on port ${port}`);
+console.log(`[Service] Listening on  ${address}:${port}`);

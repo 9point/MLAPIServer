@@ -137,8 +137,6 @@ class WorkerLifecycleMgr {
       throw Error(`No task found for project ${projectID}`);
     }
 
-    lifecycles[0].runTask(task);
-
     const workflowID = workflow.id;
     const workflowRun = WorkflowRun.create({ workflowID });
     const workflowRunState = WorkflowRunState.create({
@@ -157,6 +155,8 @@ class WorkerLifecycleMgr {
       workflowRun,
       workflowRunState,
     };
+
+    lifecycles[0].runTask(task, workflowRun);
 
     return workflowRun;
   }

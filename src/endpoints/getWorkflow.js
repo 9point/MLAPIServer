@@ -1,4 +1,4 @@
-const DB = require('../DB');
+const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
 const Workflow = require('../models/Workflow');
 

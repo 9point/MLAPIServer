@@ -84,7 +84,7 @@ class WorkerLifecycle {
   // PUBLIC METHODS
   // ---------------------------------------------------------------------------
 
-  runTask(task) {
+  runTask(task, workflowRun) {
     assert(this._runningTask === null);
     assert(this.status === 'IDLE');
     assert(this._directiveConnection);
@@ -92,6 +92,7 @@ class WorkerLifecycle {
     const config = {
       projectID: task.projectRef.refID,
       taskName: task.name,
+      workflowRunID: workflowRun.id,
       workerID: this._worker.id,
     };
 
