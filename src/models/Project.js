@@ -1,4 +1,5 @@
 const createModel = require('./createModel');
+const setModel = require('./setModel');
 
 const COLLECTION_NAME = 'Projects';
 const MODEL_TYPE = 'Project';
