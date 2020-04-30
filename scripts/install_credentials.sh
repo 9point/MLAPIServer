@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 
 # NOTE: This script assumes environment variables AWS_ACCESS_KEY_ID

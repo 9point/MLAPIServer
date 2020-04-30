@@ -17,8 +17,13 @@ async function registerProject(call, callback) {
 
   if (project) {
     console.log(`Registering existing project: ${name}...`);
+
     // This project already exists. Check for any updates.
-    project = await GRPCUtils.Project.genUpdate(project, request);
+    if (project.imageName !== imageName) {
+      project = Project.set(project, { imageName });
+      await DB.genSetModel(Project, project);
+    }
+
     callback(null, GRPCUtils.Project.createMessage(project));
     return;
   }

@@ -1,5 +1,3 @@
-TEST="$(cat package.json)"
-
 DOCKER_ORG=9point
 
 info:
