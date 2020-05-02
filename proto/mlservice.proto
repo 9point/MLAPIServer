@@ -47,6 +47,7 @@ message Obj_Workflow {
   bool is_deleted = 4;
   string name = 5;
   string project_ref_id = 6;
+  string task_names = 7;
 }
 
 message Obj_WorkflowRun {
@@ -96,6 +97,7 @@ message Req_RegisterProject {
 message Req_RegisterWorkflow {
   string name = 1;
   string project_ref_id = 2;
+  string task_names = 3;
 }
 
 message Req_RegisterTask {

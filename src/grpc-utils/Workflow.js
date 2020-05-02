@@ -1,6 +1,13 @@
 const GRPCMLMessages = require('../static_codegen/mlservice_pb');
 
-function createMessage(workflow) {
+const nullthrows = require('nullthrows');
+
+function createMessage(workflow, tasks) {
+  const taskNames = workflow.taskRefs.map((ref) => {
+    const task = nullthrows(tasks.find((t) => t.id === ref.refID));
+    return `${task.name}:${task.version}`;
+  });
+
   const message = new GRPCMLMessages.Obj_Workflow();
   message.setId(workflow.id);
   message.setCreatedAt(
@@ -9,6 +16,7 @@ function createMessage(workflow) {
   message.setIsDeleted(workflow.isDeleted);
   message.setName(workflow.name);
   message.setProjectRefId(workflow.projectRef.refID);
+  message.setTaskNames(taskNames.join('|'));
   message.setUpdatedAt(
     Math.floor(workflow.updatedAt.toDate().getTime() / 1000),
   );

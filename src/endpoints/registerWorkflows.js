@@ -1,6 +1,13 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
+const Task = require('../models/Task');
 const Workflow = require('../models/Workflow');
+
+const assert = require('assert');
+
+function sleep(millis) {
+  return new Promise((resolve) => setTimeout(resolve, millis));
+}
 
 async function registerWorkflows(call) {
   console.log('RegisterWorkflows: Calling');
@@ -30,14 +37,24 @@ async function registerWorkflows(call) {
       );
     }
 
-    const query = DB.createQuery(Workflow, (_) =>
+    const workflowQuery = DB.createQuery(Workflow, (_) =>
       _.where('projectRef.refID', '==', projectIDs[0]).where(
         'isDeleted',
         '==',
         false,
       ),
     );
-    const allWorkflows = await DB.genRunQuery(query);
+    const allWorkflows = await DB.genRunQuery(workflowQuery);
+
+    const taskQuery = DB.createQuery(Task, (_) =>
+      _.where('projectRef.refID', '==', projectIDs[0]).where(
+        'isDeleted',
+        '==',
+        false,
+      ),
+    );
+
+    const allTasks = await DB.genRunQuery(taskQuery);
 
     const removedWorkflows = allWorkflows.filter(
       (wf) => !requests.some((req) => req.getName() === wf.name),
@@ -49,12 +66,35 @@ async function registerWorkflows(call) {
 
     const newWorkflows = requests
       .filter((req) => !allWorkflows.some((wf) => wf.name === req.getName()))
-      .map((req) =>
-        Workflow.create({
+      .map((req) => {
+        const taskNames = req
+          .getTaskNames()
+          .split('|')
+          .map((name) => {
+            const nameVersion = name.split(':');
+            assert(nameVersion.length <= 2);
+            return nameVersion.length === 1
+              ? [nameVersion[0], null]
+              : nameVersion;
+          });
+
+        const taskIDs = taskNames.map((nameVersion) => {
+          const [name, version] = nameVersion;
+          const task = allTasks.find(
+            (t) =>
+              t.name === name && (version === null || version === task.version),
+          );
+
+          assert(task);
+          return task.id;
+        });
+
+        return Workflow.create({
           name: req.getName(),
           projectID: projectIDs[0],
-        }),
-      );
+          taskIDs,
+        });
+      });
 
     for (const wf of removedWorkflows) {
       wf.isDeleted = false;
@@ -81,7 +121,7 @@ async function registerWorkflows(call) {
 
     const currentWorkflows = existingWorkflows.concat(newWorkflows);
     for (const workflow of currentWorkflows) {
-      const message = GRPCUtils.Workflow.createMessage(workflow);
+      const message = GRPCUtils.Workflow.createMessage(workflow, allTasks);
       call.write(message);
     }
 

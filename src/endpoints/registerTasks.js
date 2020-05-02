@@ -5,27 +5,32 @@ const Task = require('../models/Task');
 
 const nullthrows = require('nullthrows');
 
+function sleep(millis) {
+  return new Promise((resolve) => setTimeout(resolve, millis));
+}
+
 async function registerTasks(call) {
-  console.log('RegisterTasks: Calling');
+  console.log('[RegisterTasks]: Calling');
 
   // Maps workflow id to all tasks for that workflow.
   const requests = [];
 
   function onData(request) {
-    console.log('RegisterTasks: Receiving request');
+    console.log('[RegisterTasks]: Receiving request');
     requests.push(request);
   }
 
   async function onEnd() {
-    console.log('RegisterTasks: Done receiving request');
+    console.log('[RegisterTasks]: Done receiving request');
+    console.log(`[RegisterTasks]: Request Count: ${requests.length}`);
 
     if (requests.length === 0) {
-      throw Error('RegisterTasks: Did not receive any requests');
+      throw Error('[RegisterTasks]: Did not receive any requests');
     }
 
     if (hasMultipleRequestsWithSameName(requests)) {
       throw Error(
-        'RegisterTasks: Multiple tasks are being reigstered with the same name.',
+        '[RegisterTasks]: Multiple tasks are being reigstered with the same name.',
       );
     }
 
