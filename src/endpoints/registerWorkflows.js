@@ -1,7 +1,7 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
-const Task = require('../models/Task');
-const Workflow = require('../models/Workflow');
+const Task = require('../models-DEPRECATED/Task');
+const Workflow = require('../models-DEPRECATED/Workflow');
 
 const assert = require('assert');
 

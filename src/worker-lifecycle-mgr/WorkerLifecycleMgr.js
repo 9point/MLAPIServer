@@ -1,10 +1,10 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
-const Task = require('../models/Task');
-const Worker = require('../models/Worker');
+const Task = require('../models-DEPRECATED/Task');
+const Worker = require('../models-DEPRECATED/Worker');
 const WorkerLifecycle = require('./WorkerLifecycle');
-const WorkflowRun = require('../models/WorkflowRun');
-const WorkflowRunState = require('../models/WorkflowRunState');
+const WorkflowRun = require('../models-DEPRECATED/WorkflowRun');
+const WorkflowRunState = require('../models-DEPRECATED/WorkflowRunState');
 
 const assert = require('assert');
 

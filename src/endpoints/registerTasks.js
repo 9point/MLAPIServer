@@ -1,7 +1,7 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
 const Semver = require('../semver');
-const Task = require('../models/Task');
+const Task = require('../models-DEPRECATED/Task');
 
 const nullthrows = require('nullthrows');
 

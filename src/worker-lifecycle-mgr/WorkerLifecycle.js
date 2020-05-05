@@ -1,6 +1,6 @@
 const DB = require('../db');
-const Worker = require('../models/Worker');
-const WorkerDirective = require('../models/WorkerDirective');
+const Worker = require('../models-DEPRECATED/Worker');
+const WorkerDirective = require('../models-DEPRECATED/WorkerDirective');
 const WorkerDirectiveConnection = require('./WorkerDirectiveConnection');
 
 const assert = require('assert');

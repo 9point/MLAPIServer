@@ -1,6 +1,6 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
-const Workflow = require('../models/Workflow');
+const Workflow = require('../models-DEPRECATED/Workflow');
 
 async function getWorkflow(call, callback) {
   console.log('GetWorkflow: Calling');

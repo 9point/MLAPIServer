@@ -1,6 +1,6 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
-const Project = require('../models/Project');
+const Project = require('../models-DEPRECATED/Project');
 
 async function registerProject(call, callback) {
   console.log('Calling: RegisterProject');

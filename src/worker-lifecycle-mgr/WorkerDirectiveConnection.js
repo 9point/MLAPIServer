@@ -1,6 +1,6 @@
 const DB = require('../db');
 const GRPCUtils = require('../grpc-utils');
-const WorkerDirective = require('../models/WorkerDirective');
+const WorkerDirective = require('../models-DEPRECATED/WorkerDirective');
 
 const assert = require('assert');
 
