@@ -2,10 +2,14 @@
   "name": "mlapiservice",
   "version": "1.0.2",
   "scripts": {
-    "start": "node ./src/server.js"
+    "build": "npm run build:protoc && npm run build:ts",
+    "build:protoc": "bash scripts/protoc.sh",
+    "build:ts": "tsc",
+    "start": "node ./build/server.js"
   },
   "dependencies": {
     "@grpc/proto-loader": "^0.1.0",
+    "@types/node": "^13.13.5",
     "@types/uuid": "^7.0.3",
     "async": "^1.5.2",
     "firebase-admin": "^8.11.0",
@@ -16,10 +20,9 @@
     "minimist": "^1.2.0",
     "mongoose": "^5.9.9",
     "nullthrows": "^1.1.1",
-    "request": "^2.88.2",
     "uuid": "^7.0.3"
   },
   "devDependencies": {
-    "@types/node": "^13.13.5"
+    "typescript": "^3.8.3"
   }
 }
