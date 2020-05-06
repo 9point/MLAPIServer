@@ -17,6 +17,8 @@ export interface Fields {
 
 export type Model = _Model<typeof MODEL_TYPE> & Fields;
 
+export type Ref = _Ref<typeof MODEL_TYPE>;
+
 export type ModelModule = _ModelModule<typeof MODEL_TYPE, Fields, Model>;
 
 export function create(fields: Fields): Model {

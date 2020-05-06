@@ -20,5 +20,5 @@ export interface ModelModule<
 > {
   COLLECTION_NAME: string;
   MODEL_TYPE: TType;
-  create: (fields: TFields) => TModel;
+  create: (fields: any) => TModel;
 }
