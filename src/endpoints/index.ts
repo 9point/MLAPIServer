@@ -2,8 +2,8 @@ import ErrorUtils from '../grpc-utils-DEPRECATED/error-utils';
 
 import getProject from './getProject';
 import getWorkflow from './getWorkflow';
-import registerProject from './registerProject-DEPRECATED';
-import registerTasks from './registerTasks-DEPRECATED';
+import registerProject from './registerProject';
+import registerTasks from './registerTasks';
 import registerWorker from './registerWorker';
 import registerWorkflows from './registerWorkflows';
 import routeWorkerDirectives from './routeWorkerDirectives';

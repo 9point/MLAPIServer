@@ -96,7 +96,6 @@ message Req_RegisterProject {
 message Req_RegisterWorkflow {
   string name = 1;
   string project_ref_id = 2;
-  string task_names = 3;
 }
 
 message Req_RegisterTask {
