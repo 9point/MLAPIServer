@@ -7,6 +7,7 @@ import {
   Model as _Model,
   ModelModule as _ModelModule,
   Ref as _Ref,
+  ValidationResult,
 } from './types';
 
 export const COLLECTION_NAME = 'Tasks';
@@ -22,8 +23,6 @@ export interface Fields {
 export type Model = _Model<typeof MODEL_TYPE> & Fields;
 
 export type Ref = _Ref<typeof MODEL_TYPE>;
-
-export type ModelModule = _ModelModule<typeof MODEL_TYPE, Fields, Model>;
 
 export interface CreateFields {
   name: string;
@@ -63,7 +62,7 @@ export function set(model: Model, fields: SetFields) {
   return setModel(model, { ...fields, isMutable: toSemver.dev });
 }
 
-export function validate(model: Model) {
+export function validate(model: Model): ValidationResult {
   const rName = /^[a-zA-Z][a-zA-Z\d-_]+$/;
   if (!rName.test(model.name)) {
     const m =
@@ -72,6 +71,14 @@ export function validate(model: Model) {
     return { error, isValid: false };
   }
   return { isValid: true };
+}
+
+export interface ModelModule
+  extends _ModelModule<typeof MODEL_TYPE, Fields, Model> {
+  create: typeof create;
+  createRef: typeof createRef;
+  set: typeof set;
+  validate: typeof validate;
 }
 
 export default {

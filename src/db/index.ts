@@ -7,9 +7,14 @@ import { Subscription } from '../types';
 
 export type Raw = FirebaseFirestore.DocumentData;
 
-export type Query = FirebaseFirestore.Query<Raw>;
+export type Query<
+  TType extends string,
+  TModel extends Model<TType>
+> = FirebaseFirestore.Query<Raw>;
 
-export type QueryCallback = (collection: Collection) => Query;
+export type QueryCallback<TType extends string, TModel extends Model<TType>> = (
+  collection: Collection,
+) => Query<TType, TModel>;
 
 export type QueryListener<TType extends string, TModel extends Model<TType>> = (
   change: Change<TType, TModel>,
@@ -79,10 +84,10 @@ export async function genFetchModel<
   return transformToModel<TType, TModel>(data);
 }
 
-async function genSetModel<TType extends string, TModel extends Model<TType>>(
-  module: ModelModule<TType, any, TModel>,
-  model: TModel,
-): Promise<TModel> {
+export async function genSetModel<
+  TType extends string,
+  TModel extends Model<TType>
+>(module: ModelModule<TType, any, TModel>, model: TModel): Promise<TModel> {
   const validationResult = module.validate(model);
   if (!validationResult.isValid) {
     throw validationResult.error;
@@ -98,7 +103,7 @@ async function genSetModel<TType extends string, TModel extends Model<TType>>(
   return model;
 }
 
-async function genDeleteModel<
+export async function genDeleteModel<
   TType extends string,
   TModel extends Model<TType>
 >(module: ModelModule<TType, any, TModel>, model: TModel): Promise<void> {
@@ -106,16 +111,17 @@ async function genDeleteModel<
   await genSetModel(module, newModel);
 }
 
-function createQuery<TType extends string, TModel extends Model<TType>>(
+export function createQuery<TType extends string, TModel extends Model<TType>>(
   module: ModelModule<TType, any, TModel>,
-  cb: QueryCallback,
-): Query {
+  cb: QueryCallback<TType, TModel>,
+): Query<TType, TModel> {
   return cb(FirebaseAdmin.firestore().collection(module.COLLECTION_NAME));
 }
 
-async function genRunQuery<TType extends string, TModel extends Model<TType>>(
-  query: Query,
-): Promise<TModel[]> {
+export async function genRunQuery<
+  TType extends string,
+  TModel extends Model<TType>
+>(query: Query<TType, TModel>): Promise<TModel[]> {
   const snapshot = await query.get();
   const models: TModel[] = [];
 
@@ -131,16 +137,16 @@ async function genRunQuery<TType extends string, TModel extends Model<TType>>(
   return models;
 }
 
-async function genRunQueryOne<
+export async function genRunQueryOne<
   TType extends string,
   TModel extends Model<TType>
->(query: Query): Promise<TModel | null> {
+>(query: Query<TType, TModel>): Promise<TModel | null> {
   const models = await genRunQuery<TType, TModel>(query);
   return models[0] || null;
 }
 
-function listenQuery<TType extends string, TModel extends Model<TType>>(
-  query: Query,
+export function listenQuery<TType extends string, TModel extends Model<TType>>(
+  query: Query<TType, TModel>,
   cb: QueryListener<TType, TModel>,
 ): Subscription {
   const stop = query.onSnapshot((snapshot) => {
@@ -160,13 +166,3 @@ function listenQuery<TType extends string, TModel extends Model<TType>>(
 
   return { stop };
 }
-
-module.exports = {
-  createQuery,
-  genDeleteModel,
-  genFetchModel,
-  genRunQuery,
-  genRunQueryOne,
-  genSetModel,
-  listenQuery,
-};

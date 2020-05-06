@@ -5,21 +5,19 @@ import {
   Model as _Model,
   ModelModule as _ModelModule,
   Ref as _Ref,
+  ValidationResult,
 } from './types';
 
 export const COLLECTION_NAME = 'Projects';
 export const MODEL_TYPE = 'Project';
 
 export interface Fields {
-  imageName: string;
   name: string;
 }
 
 export type Model = _Model<typeof MODEL_TYPE> & Fields;
 
 export type Ref = _Ref<typeof MODEL_TYPE>;
-
-export type ModelModule = _ModelModule<typeof MODEL_TYPE, Fields, Model>;
 
 export function create(fields: Fields): Model {
   return createModel(MODEL_TYPE, fields);
@@ -29,11 +27,7 @@ export function createRef(refID: string): Ref {
   return { refID, refType: MODEL_TYPE, type: 'REF' };
 }
 
-export function set(model: Model, fields: Partial<Fields>) {
-  return setModel(model, fields);
-}
-
-export function validate(model: Model) {
+export function validate(model: Model): ValidationResult {
   const rName = /^[a-zA-Z][a-zA-Z\d-_]+$/;
   if (!rName.test(model.name)) {
     const m =
@@ -44,11 +38,17 @@ export function validate(model: Model) {
   return { isValid: true };
 }
 
+export interface ModelModule
+  extends _ModelModule<typeof MODEL_TYPE, Fields, Model> {
+  create: typeof create;
+  createRef: typeof createRef;
+  validate: typeof validate;
+}
+
 export default {
   COLLECTION_NAME,
   MODEL_TYPE,
   create,
   createRef,
-  set,
   validate,
-} as ModelModule;
+};
