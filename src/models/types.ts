@@ -13,6 +13,19 @@ export interface Ref<TType extends string> {
   type: 'REF';
 }
 
+export interface ValidationResult$IsValid {
+  isValid: true;
+}
+
+export interface ValidationResult$IsNotValid {
+  error: Error;
+  isValid: false;
+}
+
+export type ValidationResult =
+  | ValidationResult$IsValid
+  | ValidationResult$IsNotValid;
+
 export interface ModelModule<
   TType extends string,
   TFields extends Object,
@@ -22,4 +35,5 @@ export interface ModelModule<
   MODEL_TYPE: TType;
   create: (fields: any) => TModel;
   createRef: (refID: string) => Ref<TType>;
+  validate: (model: TModel) => ValidationResult;
 }

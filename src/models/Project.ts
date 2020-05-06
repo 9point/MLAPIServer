@@ -33,10 +33,22 @@ export function set(model: Model, fields: Partial<Fields>) {
   return setModel(model, fields);
 }
 
+export function validate(model: Model) {
+  const rName = /^[a-zA-Z][a-zA-Z\d-_]+$/;
+  if (!rName.test(model.name)) {
+    const m =
+      'Name must start with an alphabetical character and can only contain alphanumerical characters, -, or _';
+    const error = Error(`Invalid ${MODEL_TYPE} name: ${model.name}. ${m}`);
+    return { error, isValid: false };
+  }
+  return { isValid: true };
+}
+
 export default {
   COLLECTION_NAME,
   MODEL_TYPE,
   create,
   createRef,
   set,
+  validate,
 } as ModelModule;

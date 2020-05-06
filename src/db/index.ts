@@ -83,6 +83,11 @@ async function genSetModel<TType extends string, TModel extends Model<TType>>(
   module: ModelModule<TType, any, TModel>,
   model: TModel,
 ): Promise<TModel> {
+  const validationResult = module.validate(model);
+  if (!validationResult.isValid) {
+    throw validationResult.error;
+  }
+
   const ref = FirebaseAdmin.firestore()
     .collection(module.COLLECTION_NAME)
     .doc(model.id);
