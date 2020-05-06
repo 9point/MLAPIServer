@@ -12,3 +12,13 @@ export interface Ref<TType extends string> {
   refType: TType;
   type: 'REF';
 }
+
+export interface ModelModule<
+  TType extends string,
+  TFields extends Object,
+  TModel extends Model<TType> & TFields
+> {
+  COLLECTION_NAME: string;
+  MODEL_TYPE: TType;
+  create: (fields: TFields) => TModel;
+}

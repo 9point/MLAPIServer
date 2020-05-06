@@ -1,7 +1,11 @@
 import createModel from './createModel';
 import setModel from './setModel';
 
-import { Model as _Model, Ref as _Ref } from './types';
+import {
+  Model as _Model,
+  ModelModule as _ModelModule,
+  Ref as _Ref,
+} from './types';
 
 export const COLLECTION_NAME = 'Projects';
 export const MODEL_TYPE = 'Project';
@@ -12,6 +16,8 @@ export interface Fields {
 }
 
 export type Model = _Model<typeof MODEL_TYPE> & Fields;
+
+export type ModelModule = _ModelModule<typeof MODEL_TYPE, Fields, Model>;
 
 export function create(fields: Fields): Model {
   return createModel(MODEL_TYPE, fields);
@@ -26,4 +32,4 @@ export default {
   MODEL_TYPE,
   create,
   set,
-};
+} as ModelModule;

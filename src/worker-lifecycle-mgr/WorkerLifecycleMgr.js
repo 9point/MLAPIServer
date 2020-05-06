@@ -1,4 +1,4 @@
-const DB = require('../db');
+const DB = require('../db-DEPRECATED');
 const GRPCUtils = require('../grpc-utils');
 const Task = require('../models-DEPRECATED/Task');
 const Worker = require('../models-DEPRECATED/Worker');
