@@ -1,6 +1,5 @@
 import createModel from './createModel';
 import setModel from './setModel';
-import semver from '../semver';
 
 import { createRef as createTaskRef, Ref as TaskRef } from './Task';
 import { createRef as createWorkerRef, Ref as WorkerRef } from './Worker';
