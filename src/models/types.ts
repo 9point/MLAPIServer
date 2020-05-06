@@ -21,4 +21,5 @@ export interface ModelModule<
   COLLECTION_NAME: string;
   MODEL_TYPE: TType;
   create: (fields: any) => TModel;
+  createRef: (refID: string) => Ref<TType>;
 }

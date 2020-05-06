@@ -25,6 +25,10 @@ export function create(fields: Fields): Model {
   return createModel(MODEL_TYPE, fields);
 }
 
+export function createRef(refID: string): Ref {
+  return { refID, refType: MODEL_TYPE, type: 'REF' };
+}
+
 export function set(model: Model, fields: Partial<Fields>) {
   return setModel(model, fields);
 }
@@ -33,5 +37,6 @@ export default {
   COLLECTION_NAME,
   MODEL_TYPE,
   create,
+  createRef,
   set,
 } as ModelModule;
