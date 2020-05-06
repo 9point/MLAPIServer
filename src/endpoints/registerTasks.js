@@ -1,5 +1,5 @@
 const DB = require('../db-DEPRECATED');
-const GRPCUtils = require('../grpc-utils');
+const GRPCUtils = require('../grpc-utils-DEPRECATED');
 const Semver = require('../semver');
 const Task = require('../models-DEPRECATED/Task');
 

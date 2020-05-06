@@ -1,14 +1,15 @@
-const Endpoints = require('./endpoints');
-const FirebaseAdmin = require('firebase-admin');
-const GRPCMLServices = require('./static_codegen/mlservice_grpc_pb');
-const WorkerLifecycleMgr = require('./worker-lifecycle-mgr');
+import Endpoints from './endpoints';
+import FirebaseAdmin from 'firebase-admin';
+import GRPCMLServices from './static_codegen/mlservice_grpc_pb';
+import WorkerLifecycleMgr from './worker-lifecycle-mgr';
 
-const fs = require('fs');
-const grpc = require('grpc');
+import fs from 'fs';
+import grpc from 'grpc';
 
 console.log('[Service] Initializing firebase connection...');
 
 const firebaseServiceAccount = JSON.parse(
+  // @ts-ignore
   fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT).toString(),
 );
 

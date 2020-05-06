@@ -1,5 +1,5 @@
 const DB = require('../db-DEPRECATED');
-const GRPCUtils = require('../grpc-utils');
+const GRPCUtils = require('../grpc-utils-DEPRECATED');
 const Project = require('../models-DEPRECATED/Project');
 
 async function registerProject(call, callback) {

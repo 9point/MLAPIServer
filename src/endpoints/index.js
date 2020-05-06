@@ -1,8 +1,8 @@
-const GRPCUtils = require('../grpc-utils');
+const GRPCUtils = require('../grpc-utils-DEPRECATED');
 
 const getProject = require('./getProject');
 const getWorkflow = require('./getWorkflow');
-const registerProject = require('./registerProject');
+const registerProject = require('./registerProject-DEPRECATED');
 const registerTasks = require('./registerTasks');
 const registerWorker = require('./registerWorker');
 const registerWorkflows = require('./registerWorkflows');
