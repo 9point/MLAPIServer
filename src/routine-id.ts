@@ -17,27 +17,29 @@ export type RoutineID = RoutineID$DB | RoutineID$Name;
 export function parse(str: string): RoutineID {
   const tokens = str.split(':');
 
-  assert([4, 3, 2].includes(tokens.length));
-
   const type = tokens[0];
 
   const validTypes = ['db', 'wfname', 'tname'];
 
   if (!validTypes.includes(type)) {
-    const m = `id must be of type: ${validTypes.join(', ')}`;
-    throw Error(`Invalid routine id type: ${type}. ${m}.`);
+    throw new ErrorInvalidRoutineID(str);
   }
 
   switch (type) {
     case 'db': {
-      assert(tokens.length === 2);
+      if (tokens.length !== 2) {
+        throw new ErrorInvalidRoutineID(str);
+      }
+
       const dbID = tokens[1];
       return { dbID, type };
     }
 
     case 'wfname':
     case 'tname': {
-      assert([4, 3, 2].includes(tokens.length));
+      if (![4, 3, 2].includes(tokens.length)) {
+        throw new ErrorInvalidRoutineID(str);
+      }
 
       if (tokens.length === 4) {
         const [_, projectName, routineName, version] = tokens;
@@ -99,3 +101,5 @@ export function matches(rid1: RoutineID, rid2: RoutineID): boolean {
     }
   }
 }
+
+export class ErrorInvalidRoutineID extends Error {}

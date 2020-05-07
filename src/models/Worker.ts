@@ -11,10 +11,18 @@ import {
 export const COLLECTION_NAME = 'Workers';
 export const MODEL_TYPE = 'Worker';
 
-export type WorkerStatus = 'INITIALIZING' | 'IDLE' | 'WORKING' | 'HANGING';
+export type WorkerStatus =
+  | 'CLOSED'
+  | 'HANGING'
+  | 'IDLE'
+  | 'INITIALIZING'
+  | 'TERMINATING'
+  | 'UNRESPONSIVE'
+  | 'WORKING';
 
 export interface Fields {
   projectRef: ProjectRef;
+  routines: string[];
   status: WorkerStatus;
 }
 
@@ -22,16 +30,16 @@ export type Model = _Model<typeof MODEL_TYPE> & Fields;
 
 export type Ref = _Ref<typeof MODEL_TYPE>;
 
-export type ModelModule = _ModelModule<typeof MODEL_TYPE, Fields, Model>;
-
 export interface CreateFields {
   projectID: string;
+  routines: string[];
   status?: WorkerStatus;
 }
 
 export function create(fields: CreateFields): Model {
   return createModel(MODEL_TYPE, {
     projectRef: createProjectRef(fields.projectID),
+    routines: fields.routines,
     status: fields.status || 'INITIALIZING',
   });
 }
@@ -48,10 +56,17 @@ function set(model: Model, fields: SetFields): Model {
   return setModel(model, fields);
 }
 
-module.exports = {
+export interface ModelModule
+  extends _ModelModule<typeof MODEL_TYPE, Fields, Model> {
+  create: typeof create;
+  createRef: typeof createRef;
+  set: typeof set;
+}
+
+export default {
   COLLECTION_NAME,
   MODEL_TYPE,
   create,
   createRef,
   set,
-};
+} as ModelModule;
