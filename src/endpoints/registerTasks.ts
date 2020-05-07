@@ -80,7 +80,7 @@ async function genRegisterTask(
   const name = request.getName();
   const version = request.getVersion();
 
-  const routineID = parseRoutineID(`${name}:${version}`);
+  const routineID = parseRoutineID(`tname:${name}:${version}`);
 
   let task = await genFetchTask(routineID);
   if (task) {
@@ -98,7 +98,7 @@ async function genRegisterTask(
 
 async function genFetchTask(id: RoutineID): Promise<Task | null> {
   switch (id.type) {
-    case 'DB': {
+    case 'db': {
       const task = await DB.genFetchModel(TaskModule, id.dbID);
       if (!task || task.isDeleted) {
         throw Error(`Cannot find task with id: ${id.dbID}`);
@@ -106,8 +106,9 @@ async function genFetchTask(id: RoutineID): Promise<Task | null> {
       return task;
     }
 
-    case 'NAME': {
-      // NOTE: Ignoring project name of routine id.
+    case 'wfname':
+    case 'tname': {
+      // Ignoring project name of routine id.
 
       const query = DB.createQuery(TaskModule, (_) => {
         let q = _.where('isDeleted', '==', false);
