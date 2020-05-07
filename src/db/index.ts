@@ -52,7 +52,7 @@ export function transformToModel<
 >(obj: Raw): TModel {
   const model = {};
 
-  for (const key of Object.values(obj)) {
+  for (const key of Object.keys(obj)) {
     let val = obj[key];
     if (val instanceof FirebaseAdmin.firestore.Timestamp) {
       val = val.toDate();

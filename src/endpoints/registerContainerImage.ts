@@ -16,8 +16,8 @@ export default async function registerContainerImage(
 
   const name = request.getName();
   const projectID = request.getProjectId();
-  const taskIDs = request.getTaskIDs().split('|');
-  const workflowIDs = request.getWorkflowIDs().split('|');
+  const taskIDs = request.getTaskIds().split('|');
+  const workflowIDs = request.getWorkflowIds().split('|');
 
   let containerImage = await genFetchContainerImage(name);
 

@@ -16,6 +16,9 @@ export default async function registerProject(
   let project = await genFetchProjectWithName(name);
 
   if (project) {
+    console.log('found existing proj');
+    console.log(project);
+
     console.log(`[RegisterProject]: Registering existing project: ${name}`);
     return callback(null, GRPCProject.createMessage(project));
   }
