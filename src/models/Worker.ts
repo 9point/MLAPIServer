@@ -6,6 +6,7 @@ import {
   Model as _Model,
   ModelModule as _ModelModule,
   Ref as _Ref,
+  ValidationResult,
 } from './types';
 
 export const COLLECTION_NAME = 'Workers';
@@ -52,8 +53,12 @@ export interface SetFields {
   status: WorkerStatus;
 }
 
-function set(model: Model, fields: SetFields): Model {
+export function set(model: Model, fields: SetFields): Model {
   return setModel(model, fields);
+}
+
+export function validate(model: Model): ValidationResult {
+  return { isValid: true };
 }
 
 export interface ModelModule
@@ -61,6 +66,7 @@ export interface ModelModule
   create: typeof create;
   createRef: typeof createRef;
   set: typeof set;
+  validate: typeof validate;
 }
 
 export default {
@@ -69,4 +75,5 @@ export default {
   create,
   createRef,
   set,
+  validate,
 } as ModelModule;

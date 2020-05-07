@@ -10,5 +10,5 @@ export interface EndpointCallWritable extends NodeJS.WritableStream {
 
 export type EndpointCallback<TMessage = Message> = (
   error: Error | null | undefined,
-  message: TMessage,
+  message?: TMessage,
 ) => void;

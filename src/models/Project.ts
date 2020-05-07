@@ -1,5 +1,4 @@
 import createModel from './createModel';
-import setModel from './setModel';
 
 import {
   Model as _Model,
