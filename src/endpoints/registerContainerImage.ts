@@ -16,6 +16,7 @@ export default async function registerContainerImage(
 
   const name = request.getName();
   const projectID = request.getProjectId();
+  const protocol = request.getProtocol();
   const taskIDs = request.getTaskIds().split('|');
   const workflowIDs = request.getWorkflowIds().split('|');
 
@@ -39,6 +40,7 @@ export default async function registerContainerImage(
   containerImage = ContainerImageModule.create({
     name,
     projectID,
+    protocol,
     taskIDs,
     workflowIDs,
   });

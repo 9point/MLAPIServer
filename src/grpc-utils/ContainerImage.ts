@@ -15,6 +15,7 @@ export function createMessage(containerImage: ContainerImage): Message {
   message.setIsDeleted(containerImage.isDeleted);
   message.setName(containerImage.name);
   message.setProjectId(containerImage.projectRef.refID);
+  message.setProtocol(containerImage.protocol);
   message.setTaskIds(taskIDs);
   message.setWorkflowIds(workflowIDs);
   message.setUpdatedAt(Math.floor(containerImage.updatedAt.getTime() / 1000));

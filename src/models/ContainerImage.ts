@@ -17,6 +17,7 @@ export const MODEL_TYPE = 'ContainerImage';
 export interface Fields {
   name: string;
   projectRef: ProjectRef;
+  protocol: string;
   taskRefs: TaskRef[];
   workflowRefs: WorkflowRef[];
 }
@@ -28,6 +29,7 @@ export type Ref = _Ref<typeof MODEL_TYPE>;
 export interface CreateFields {
   name: string;
   projectID: string;
+  protocol: string;
   taskIDs: string[];
   workflowIDs: string[];
 }
@@ -36,6 +38,7 @@ export function create(fields: CreateFields): Model {
   return createModel(MODEL_TYPE, {
     name: fields.name,
     projectRef: createProjectRef(fields.projectID),
+    protocol: fields.protocol,
     taskRefs: fields.taskIDs.map((id) => createTaskRef(id)),
     workflowRefs: fields.workflowIDs.map((id) => createWorkflowRef(id)),
   });

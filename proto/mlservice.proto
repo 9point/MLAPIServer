@@ -28,8 +28,9 @@ message Obj_ContainerImage {
   bool is_deleted = 4;
   string name = 5;
   string project_id = 6;
-  string task_ids = 7;
-  string workflow_ids = 8;
+  string protocol = 7;
+  string task_ids = 8;
+  string workflow_ids = 9;
 }
 
 message Obj_Worker {
