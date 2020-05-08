@@ -23,9 +23,10 @@ export type RunStatus =
   | 'UNKNOWN';
 
 export interface Fields {
+  requestingWorkerRef: WorkerRef | undefined;
+  runningWorkerRef: WorkerRef | undefined;
   runType: RunType;
   status: RunStatus;
-  workerRef: WorkerRef | undefined;
   workflowRef: WorkflowRef;
 }
 
@@ -34,19 +35,24 @@ export type Model = _Model<typeof MODEL_TYPE> & Fields;
 export type Ref = _Ref<typeof MODEL_TYPE>;
 
 export interface CreateFields {
+  requestingWorkerID: string | undefined;
+  runningWorkerID: string | undefined;
   runType: RunType;
-  workerID: string | undefined;
   workflowID: string;
 }
 
 export function create(fields: CreateFields): Model {
   return createModel(MODEL_TYPE, {
+    requestingWorkerRef:
+      fields.requestingWorkerID === undefined
+        ? undefined
+        : createWorkerRef(fields.requestingWorkerID),
+    runningWorkerRef:
+      fields.runningWorkerID === undefined
+        ? undefined
+        : createWorkerRef(fields.runningWorkerID),
     runType: fields.runType,
     status: 'INITIALIZING',
-    workerRef:
-      fields.workerID === undefined
-        ? undefined
-        : createWorkerRef(fields.workerID),
     workflowRef: createWorkflowRef(fields.workflowID),
   });
 }
