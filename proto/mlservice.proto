@@ -140,11 +140,6 @@ message Res_RegisterWorker {
   string project_id = 1;
 }
 
-message Req_RunWorkflow {
-  string project_id = 1;
-  string workflow_name = 2;
-}
-
 service ML {
   rpc GetProject(Req_GetProject) returns (Obj_Project);
   rpc GetWorkflow(Req_GetWorkflow) returns (Obj_Workflow);
@@ -154,5 +149,4 @@ service ML {
   rpc RegisterWorkflows(stream Req_RegisterWorkflow) returns (stream Obj_Workflow);
   rpc RegisterTasks(stream Req_RegisterTask) returns (stream Obj_Task);
   rpc RouteWorkerDirectives(stream Req_RouteWorkerDirective) returns (stream Obj_WorkerDirective);
-  rpc RunWorkflow(Req_RunWorkflow) returns (Obj_WorkflowRun);
 }

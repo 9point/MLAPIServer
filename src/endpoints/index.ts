@@ -7,7 +7,6 @@ import registerTasks from './registerTasks';
 import registerWorker from './registerWorker';
 import registerWorkflows from './registerWorkflows';
 import routeWorkerDirectives from './routeWorkerDirectives';
-import runWorkflow from './runWorkflow';
 import registerContainerImage from './registerContainerImage';
 
 // prettier-ignore
@@ -21,5 +20,4 @@ export default {
   registerWorker: ErrorUtils.handleCallbackEndpointError(registerWorker),
   registerWorkflows: ErrorUtils.handleStreamEndpointError(registerWorkflows),
   routeWorkerDirectives: ErrorUtils.handleStreamEndpointError(routeWorkerDirectives),
-  runWorkflow: ErrorUtils.handleCallbackEndpointError(runWorkflow),
 };
