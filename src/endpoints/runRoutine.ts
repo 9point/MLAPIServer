@@ -13,7 +13,7 @@ export default async function runRoutine(
   const { request } = call;
 
   const serialArgs = request.getArguments();
-  const serialRoutineID = request.getRoutineID();
+  const serialRoutineID = request.getRoutineId();
 
   const args = JSON.parse(serialArgs);
   const routineID = parseFullRoutineID(serialRoutineID);

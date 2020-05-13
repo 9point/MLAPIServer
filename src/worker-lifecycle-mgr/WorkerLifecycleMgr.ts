@@ -133,15 +133,14 @@ export default class WorkerLifecycleMgr {
     id: FullRoutineID,
     args: Object,
   ): Promise<RoutineRun> {
+    console.log('[WorkerLifecycleMgr] Running routine');
+
     // STEP 1: PICK A WORKER TO RUN THE ROUTINE.
     // TODO: For now, workers need to be online and ready for a workflow
     // to be run. Could support in the future the ability to have a workflow
     // run pending for a set of workers.
 
-    const lifecycles = Object.values(this.lifecycleState)
-      .filter((s) => s.lifecycle.canRunRoutine(id))
-      .map((s) => s.lifecycle);
-
+    const lifecycles = this.lifecycles.filter((lc) => lc.canRunRoutine(id));
     if (lifecycles.length === 0) {
       const str = routineIDToString(id);
       throw Error(
@@ -175,7 +174,11 @@ export default class WorkerLifecycleMgr {
     await DB.genSetModel(RoutineRunModule, run);
 
     // STEP 3: REGISTER THE RUNNING ROUTINE.
-    this.lifecycleState[selectedLifecycle.worker.id].activeRuns.push(run);
+
+    const state = this.lifecycleState[selectedLifecycle.worker.id];
+    assert(state);
+
+    state.activeRuns.push(run);
 
     return run;
   }
@@ -248,6 +251,7 @@ export default class WorkerLifecycleMgr {
     // Find the run associated with this routine.
     const routine: Task | Workflow = payload.routine;
     const state = this.lifecycleState[lifecycle.worker.id];
+    assert(state);
 
     let run = state.activeRuns.find((r) => r.routineRef.refID === routine.id);
     assert(run);
@@ -264,6 +268,7 @@ export default class WorkerLifecycleMgr {
 
     const routine: Task | Workflow = payload.routine;
     const state = this.lifecycleState[lifecycle.worker.id];
+    assert(state);
 
     let run = state.activeRuns.find((r) => r.routineRef.refID === routine.id);
     assert(run);

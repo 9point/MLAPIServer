@@ -118,8 +118,9 @@ message Req_GetWorkflow {
 message Req_RegisterContainerImage {
   string name = 1;
   string project_id = 2;
-  string task_ids = 3;
-  string workflow_ids = 4;
+  string protocol = 3;
+  string task_ids = 4;
+  string workflow_ids = 5;
 }
 
 message Req_RegisterProject {

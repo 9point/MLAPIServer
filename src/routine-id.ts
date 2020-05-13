@@ -66,9 +66,16 @@ export function parse(str: string): RoutineID {
       }
 
       if (tokens.length === 4) {
+        if (type === 'wfname') {
+          throw new ErrorInvalidRoutineID();
+        }
+
         const [_, projectName, routineName, version] = tokens;
         return { projectName, routineName, type, version };
-      } else if (tokens.length === 3) {
+      } else if (tokens.length === 3 && type === 'wfname') {
+        const [_, projectName, routineName] = tokens;
+        return { projectName, routineName, type, version: undefined };
+      } else if (tokens.length === 3 && type === 'tname') {
         const [_, routineName, version] = tokens;
         return { projectName: undefined, routineName, type, version };
       } else {

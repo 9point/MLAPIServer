@@ -22,7 +22,7 @@ export function createMessage(routineRun: RoutineRun): Message {
   routineRun.requestingWorkerRef &&
     message.setRequestingWorkerId(routineRun.requestingWorkerRef.refID);
   message.setRoutineDbid(routineRun.routineRef.refID);
-  message.setState(routineRun.status);
+  message.setStatus(status);
   message.setUpdatedAt(Math.floor(routineRun.updatedAt.getTime() / 1000));
 
   return message;

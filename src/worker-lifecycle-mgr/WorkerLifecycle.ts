@@ -9,7 +9,7 @@ import WorkerDirectiveConnection from './WorkerDirectiveConnection';
 
 import assert from 'assert';
 
-import {ConnectionConfig} from './WorkerDirectiveConnection';
+import { ConnectionConfig } from './WorkerDirectiveConnection';
 import { Model as Project } from '../models/Project';
 import { Model as Task } from '../models/Task';
 import { Model as Workflow } from '../models/Workflow';

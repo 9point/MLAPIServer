@@ -94,6 +94,7 @@ export default class WorkerDirectiveConnection {
       `[WorkerDirectiveConnection] Sending directive: ${directive.payloadKey}`,
     );
 
+    DB.genSetModel(WorkerDirectiveModule, directive);
     const message = GRPCWorkerDirective.createMessage(directive);
     this.config.call.write(message);
   }

@@ -44,8 +44,7 @@ export async function genRoutine(
       const query = DB.createQuery(WorkflowModule, (_) =>
         _.where('isDeleted', '==', false)
           .where('projectRef.refID', '==', project.id)
-          .where('name', '==', id.routineName)
-          .where('version', '==', id.version),
+          .where('name', '==', id.routineName),
       );
 
       return await DB.genRunQueryOne(query);

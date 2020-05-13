@@ -1,4 +1,4 @@
-import { parse, toString } from './routine-id';
+import { matches, parse, toString } from './routine-id';
 
 describe('parse', () => {
   test('works with task names', () => {
@@ -19,5 +19,23 @@ describe('parse', () => {
       type: 'wfname',
       version: undefined,
     });
+  });
+
+  test('works with workflow names containing projects', () => {
+    const id = parse('wfname:hello:world');
+    expect(id).toEqual({
+      projectName: 'hello',
+      routineName: 'world',
+      type: 'wfname',
+      version: undefined,
+    });
+  });
+});
+
+describe('matches', () => {
+  test('matches same workflow.', () => {
+    const wf1 = parse('wfname:test-proj:test-routine');
+    const wf2 = parse('wfname:test-proj:test-routine');
+    expect(matches(wf1, wf2));
   });
 });
