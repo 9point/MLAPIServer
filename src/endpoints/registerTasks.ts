@@ -98,7 +98,8 @@ async function genRegisterTask(
 
 async function genFetchTask(id: RoutineID): Promise<Task | null> {
   switch (id.type) {
-    case 'db': {
+    case 'tdb':
+    case 'wfdb': {
       const task = await DB.genFetchModel(TaskModule, id.dbID);
       if (!task || task.isDeleted) {
         throw Error(`Cannot find task with id: ${id.dbID}`);

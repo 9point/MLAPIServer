@@ -1,3 +1,4 @@
+import assert from 'assert';
 import createModel from './createModel';
 
 import { createRef as createWorkerRef, Ref as WorkerRef } from './Worker';
@@ -19,10 +20,10 @@ export type WorkerDirectiveType =
 
 export interface Fields {
   directiveType: WorkerDirectiveType;
-  fromWorkerRef: WorkerRef | undefined;
+  fromWorkerRef: WorkerRef | null;
   payload: { [key: string]: any };
   payloadKey: string;
-  toWorkerRef: WorkerRef | undefined;
+  toWorkerRef: WorkerRef | null;
 }
 
 export type Model = _Model<typeof MODEL_TYPE> & Fields;
@@ -31,25 +32,23 @@ export type Ref = _Ref<typeof MODEL_TYPE>;
 
 export interface CreateFields {
   directiveType: WorkerDirectiveType;
-  fromWorkerID: string | undefined;
+  fromWorkerID: string | null;
   payload: { [key: string]: any };
   payloadKey: string;
-  toWorkerID: string | undefined;
+  toWorkerID: string | null;
 }
 
 function create(fields: CreateFields): Model {
   return createModel(MODEL_TYPE, {
     directiveType: fields.directiveType,
     fromWorkerRef:
-      fields.fromWorkerID === undefined
-        ? undefined
+      fields.fromWorkerID === null
+        ? null
         : createWorkerRef(fields.fromWorkerID),
     payload: fields.payload,
     payloadKey: fields.payloadKey,
     toWorkerRef:
-      fields.toWorkerID === undefined
-        ? undefined
-        : createWorkerRef(fields.toWorkerID),
+      fields.toWorkerID === null ? null : createWorkerRef(fields.toWorkerID),
   });
 }
 
@@ -64,7 +63,7 @@ export function createHeartbeatCheckPulse(
 
   return create({
     directiveType: 'SERVICE_TO_WORKER',
-    fromWorkerID: undefined,
+    fromWorkerID: null,
     payload: { id: uuidv4() },
     payloadKey: 'v1.heartbeat.check_pulse',
     toWorkerID,
@@ -82,7 +81,7 @@ export function createInfoRequestStatus(
 
   return create({
     directiveType: 'SERVICE_TO_WORKER',
-    fromWorkerID: undefined,
+    fromWorkerID: null,
     payload: {},
     payloadKey: 'v1.info.check_status',
     toWorkerID,
@@ -91,9 +90,9 @@ export function createInfoRequestStatus(
 
 export interface CreateFields$RoutineRequestStart {
   arguments: { [key: string]: any };
-  fromWorkerID: string;
+  fromWorkerID: string | null;
   routineID: string;
-  requestingWorkerLocalExecutionID: string;
+  requestingWorkerLocalExecutionID: string | null;
   toWorkerID: string;
 }
 
@@ -108,8 +107,18 @@ export function createRoutineRequestStart(
     toWorkerID,
   } = fields;
 
+  let directiveType: WorkerDirectiveType;
+  if (!fromWorkerID) {
+    // This directive was not initiated by a worker.
+    assert(requestingWorkerLocalExecutionID === null);
+    directiveType = 'SERVICE_TO_WORKER';
+  } else {
+    assert(requestingWorkerLocalExecutionID !== null);
+    directiveType = 'WORKER_TO_WORKER';
+  }
+
   return create({
-    directiveType: 'WORKER_TO_WORKER',
+    directiveType,
     fromWorkerID,
     payload: {
       arguments: _arguments,

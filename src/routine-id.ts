@@ -1,8 +1,12 @@
 import assert from 'assert';
 
+import { Model as Project } from './models/Project';
+import { Model as Task } from './models/Task';
+import { Model as Workflow } from './models/Workflow';
+
 export interface RoutineID$DB {
   dbID: string;
-  type: 'db';
+  type: 'tdb' | 'wfdb';
 }
 
 export interface RoutineID$Name {
@@ -12,21 +16,41 @@ export interface RoutineID$Name {
   version: string | undefined;
 }
 
+export interface FullRoutineID$TName {
+  projectName: string;
+  routineName: string;
+  type: 'tname';
+  version: string;
+}
+
+export interface FullRoutineID$WFName {
+  projectName: string;
+  routineName: string;
+  type: 'wfname';
+  version: undefined;
+}
+
 export type RoutineID = RoutineID$DB | RoutineID$Name;
+
+export type FullRoutineID =
+  | RoutineID$DB
+  | FullRoutineID$TName
+  | FullRoutineID$WFName;
 
 export function parse(str: string): RoutineID {
   const tokens = str.split(':');
 
   const type = tokens[0];
 
-  const validTypes = ['db', 'wfname', 'tname'];
+  const validTypes = ['tdb', 'wfdb', 'wfname', 'tname'];
 
   if (!validTypes.includes(type)) {
     throw new ErrorInvalidRoutineID(str);
   }
 
   switch (type) {
-    case 'db': {
+    case 'tdb':
+    case 'wfdb': {
       if (tokens.length !== 2) {
         throw new ErrorInvalidRoutineID(str);
       }
@@ -62,14 +86,58 @@ export function parse(str: string): RoutineID {
   assert(false);
 }
 
+export function parseFull(str: string): FullRoutineID {
+  const tokens = str.split(':');
+
+  const type = tokens[0];
+
+  const validTypes = ['tdb', 'wfdb', 'wfname', 'tname'];
+
+  if (!validTypes.includes(type)) {
+    throw new ErrorInvalidRoutineID(str);
+  }
+
+  switch (type) {
+    case 'tdb':
+    case 'wfdb': {
+      if (tokens.length !== 2) {
+        throw new ErrorInvalidFullRoutineID(str);
+      }
+
+      const dbID = tokens[1];
+      return { dbID, type };
+    }
+
+    case 'wfname': {
+      if (tokens.length !== 3) {
+        throw new ErrorInvalidFullRoutineID(str);
+      }
+      const [_, projectName, routineName] = tokens;
+      return { projectName, routineName, type, version: undefined };
+    }
+
+    case 'tname': {
+      if (tokens.length !== 4) {
+        throw new ErrorInvalidFullRoutineID(str);
+      }
+
+      const [_, projectName, routineName, version] = tokens;
+      return { projectName, routineName, type, version };
+    }
+  }
+
+  assert(false);
+}
+
 export function matches(rid1: RoutineID, rid2: RoutineID): boolean {
   if (rid1.type !== rid2.type) {
     return false;
   }
 
   switch (rid1.type) {
-    case 'db': {
-      assert(rid2.type === 'db');
+    case 'tdb':
+    case 'wfdb': {
+      assert(rid2.type === rid1.type);
       return rid1.dbID === rid2.dbID;
     }
 
@@ -102,4 +170,74 @@ export function matches(rid1: RoutineID, rid2: RoutineID): boolean {
   }
 }
 
+export function toString(routineID: RoutineID): string {
+  switch (routineID.type) {
+    case 'tname':
+    case 'wfname': {
+      const { projectName, routineName, version } = routineID;
+      let str = routineID.type;
+      if (projectName) {
+        str += `:${projectName}`;
+      }
+
+      str += `:${routineName}`;
+
+      if (version) {
+        str += `:${version}`;
+      }
+
+      return str;
+    }
+
+    case 'tdb':
+    case 'wfdb': {
+      const { dbID } = routineID;
+      return `${routineID.type}:${dbID}`;
+    }
+  }
+}
+
+export function fromRoutine(routine: Task | Workflow): RoutineID;
+export function fromRoutine(
+  routine: Task | Workflow,
+  project: Project,
+): FullRoutineID;
+
+export function fromRoutine(
+  routine: Task | Workflow,
+  project?: Project,
+): RoutineID {
+  if (project) {
+    const projectName = project.name;
+    const routineName = routine.name;
+
+    switch (routine.modelType) {
+      case 'Task': {
+        const type = 'tname';
+        const version = routine.modelType;
+        return { projectName, routineName, type, version };
+      }
+
+      case 'Workflow': {
+        const type = 'wfname';
+        const version = undefined;
+        return { projectName, routineName, type, version };
+      }
+    }
+  } else {
+    const type = routine.modelType === 'Task' ? 'tname' : 'wfname';
+    const projectName = undefined;
+    const version = routine.modelType === 'Task' ? routine.version : undefined;
+
+    return {
+      projectName,
+      routineName: routine.name,
+      type,
+      version,
+    };
+  }
+}
+
 export class ErrorInvalidRoutineID extends Error {}
+
+export class ErrorInvalidFullRoutineID extends Error {}

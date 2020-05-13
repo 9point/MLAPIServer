@@ -5,7 +5,10 @@
     "build": "npm run build:protoc && npm run build:ts",
     "build:protoc": "bash scripts/protoc.sh",
     "build:ts": "tsc",
-    "start": "node ./build/server.js"
+    "clean": "rimraf build",
+    "start": "node ./build/server.js",
+    "test": "jest src",
+    "test-watch": "jest src --watch"
   },
   "dependencies": {
     "@grpc/proto-loader": "^0.1.0",
@@ -23,6 +26,10 @@
     "uuid": "^7.0.3"
   },
   "devDependencies": {
+    "@types/jest": "^25.2.1",
+    "jest": "^26.0.1",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^25.5.1",
     "typescript": "^3.8.3"
   }
 }

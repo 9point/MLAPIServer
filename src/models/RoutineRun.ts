@@ -1,6 +1,7 @@
 import createModel from './createModel';
 import setModel from './setModel';
 
+import { createRef as createTaskRef, Ref as TaskRef } from './Task';
 import { createRef as createWorkerRef, Ref as WorkerRef } from './Worker';
 import { createRef as createWorkflowRef, Ref as WorkflowRef } from './Workflow';
 import {
@@ -10,10 +11,8 @@ import {
   ValidationResult,
 } from './types';
 
-export const COLLECTION_NAME = 'WorkflowRuns';
-export const MODEL_TYPE = 'WorkflowRun';
-
-export type RunType = 'RUN_BY_WORKER';
+export const COLLECTION_NAME = 'RoutineRuns';
+export const MODEL_TYPE = 'RoutineRun';
 
 export type RunStatus =
   | 'DONE'
@@ -23,11 +22,11 @@ export type RunStatus =
   | 'UNKNOWN';
 
 export interface Fields {
-  requestingWorkerRef: WorkerRef | undefined;
-  runningWorkerRef: WorkerRef | undefined;
-  runType: RunType;
+  parentRunRef: Ref | null;
+  requestingWorkerRef: WorkerRef | null;
+  routineRef: TaskRef | WorkflowRef;
+  runningWorkerRef: WorkerRef;
   status: RunStatus;
-  workflowRef: WorkflowRef;
 }
 
 export type Model = _Model<typeof MODEL_TYPE> & Fields;
@@ -35,25 +34,23 @@ export type Model = _Model<typeof MODEL_TYPE> & Fields;
 export type Ref = _Ref<typeof MODEL_TYPE>;
 
 export interface CreateFields {
-  requestingWorkerID: string | undefined;
-  runningWorkerID: string | undefined;
-  runType: RunType;
-  workflowID: string;
+  parentRunID: string | null;
+  requestingWorkerID: string | null;
+  runningWorkerID: string;
+  routineDBID: string;
 }
 
 export function create(fields: CreateFields): Model {
   return createModel(MODEL_TYPE, {
     requestingWorkerRef:
-      fields.requestingWorkerID === undefined
-        ? undefined
+      fields.requestingWorkerID === null
+        ? null
         : createWorkerRef(fields.requestingWorkerID),
-    runningWorkerRef:
-      fields.runningWorkerID === undefined
-        ? undefined
-        : createWorkerRef(fields.runningWorkerID),
-    runType: fields.runType,
+    routineRef: createTaskRef(fields.routineDBID),
+    runningWorkerRef: createWorkerRef(fields.runningWorkerID),
     status: 'INITIALIZING',
-    workflowRef: createWorkflowRef(fields.workflowID),
+    parentRunRef:
+      fields.parentRunID === null ? null : createRef(fields.parentRunID),
   });
 }
 
@@ -65,7 +62,7 @@ export interface SetFields {
   status: RunStatus;
 }
 
-export function set(model: Model, fields: SetFields): Model {
+export function set(model: Model, fields: SetFields) {
   return setModel(model, fields);
 }
 

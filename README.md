@@ -37,7 +37,7 @@ npm start
 
 ## Deploy
 
-Before this projet can be deployed, the following must be done:
+Before this project can be deployed, the following must be done:
 
 - The following environment variables must be defined:
 
