@@ -10,16 +10,16 @@ import WorkerDirectiveConnection from './WorkerDirectiveConnection';
 import assert from 'assert';
 
 import { ConnectionConfig } from './WorkerDirectiveConnection';
-import { Model as Project } from '../models/Project';
-import { Model as Task } from '../models/Task';
-import { Model as Workflow } from '../models/Workflow';
 import {
   fromRoutine as routineIDFromRoutine,
   matches as matchesRoutineID,
   parse as parseRoutineID,
-  toString as routineIDToString,
   RoutineID,
+  toString as routineIDToString,
 } from '../routine-id';
+import { Model as Project } from '../models/Project';
+import { Model as Task } from '../models/Task';
+import { Model as Workflow } from '../models/Workflow';
 import { Subscription } from '../types';
 
 interface HeartbeatState {
@@ -34,13 +34,13 @@ interface Listener {
 export default class WorkerLifecycle {
   private _project: Project;
   private _worker: Worker;
+  private acceptableRoutineIDs: RoutineID[] = [];
+  private activeRoutines: Array<Task | Workflow> = [];
   private directiveConnection: WorkerDirectiveConnection | null = null;
   private directiveConnectionSubscriptions: Subscription[] = [];
   private heartbeatState: HeartbeatState | null = null;
   private isConfigured: boolean = false;
   private listeners: Listener[] = [];
-  private acceptableRoutineIDs: RoutineID[] = [];
-  private activeRoutines: Array<Task | Workflow> = [];
 
   constructor(worker: Worker, project: Project) {
     this._project = project;
