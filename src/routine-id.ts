@@ -93,6 +93,31 @@ export function parse(str: string): RoutineID {
   assert(false);
 }
 
+export function createNameBasedID(
+  routine: Task | Workflow,
+  project: Project,
+): FullRoutineID$TName | FullRoutineID$WFName {
+  switch (routine.modelType) {
+    case 'Task': {
+      return {
+        projectName: project.name,
+        routineName: routine.name,
+        type: 'tname',
+        version: routine.version,
+      };
+    }
+
+    case 'Workflow': {
+      return {
+        projectName: project.name,
+        routineName: routine.name,
+        type: 'wfname',
+        version: undefined,
+      };
+    }
+  }
+}
+
 export function parseFull(str: string): FullRoutineID {
   const tokens = str.split(':');
 

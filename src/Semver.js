@@ -57,7 +57,7 @@ function isValidTransition(fromSemver, toSemver) {
   if (
     fromSemver.major === toSemver.major &&
     fromSemver.minor === toSemver.minor &&
-    fromSemver.parse <= toSemver.patch
+    fromSemver.patch <= toSemver.patch
   ) {
     return true;
   }

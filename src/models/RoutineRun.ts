@@ -1,9 +1,11 @@
+import assert from 'assert';
 import createModel from './createModel';
 import setModel from './setModel';
 
 import { createRef as createTaskRef, Ref as TaskRef } from './Task';
 import { createRef as createWorkerRef, Ref as WorkerRef } from './Worker';
 import { createRef as createWorkflowRef, Ref as WorkflowRef } from './Workflow';
+import { FullRoutineID, toString as routineIDToString } from '../routine-id';
 import {
   Model as _Model,
   ModelModule as _ModelModule,
@@ -24,6 +26,7 @@ export type RunStatus =
 export interface Fields {
   parentRunRef: Ref | null;
   requestingWorkerRef: WorkerRef | null;
+  routineID: string;
   routineRef: TaskRef | WorkflowRef;
   runningWorkerRef: WorkerRef;
   status: RunStatus;
@@ -38,15 +41,22 @@ export interface CreateFields {
   requestingWorkerID: string | null;
   runningWorkerID: string;
   routineDBID: string;
+  routineID: FullRoutineID;
 }
 
 export function create(fields: CreateFields): Model {
+  assert(['tname', 'wfname'].includes(fields.routineID.type));
+
   return createModel(MODEL_TYPE, {
     requestingWorkerRef:
       fields.requestingWorkerID === null
         ? null
         : createWorkerRef(fields.requestingWorkerID),
-    routineRef: createTaskRef(fields.routineDBID),
+    routineID: routineIDToString(fields.routineID),
+    routineRef:
+      fields.routineID.type === 'tname'
+        ? createTaskRef(fields.routineDBID)
+        : createWorkflowRef(fields.routineDBID),
     runningWorkerRef: createWorkerRef(fields.runningWorkerID),
     status: 'INITIALIZING',
     parentRunRef:

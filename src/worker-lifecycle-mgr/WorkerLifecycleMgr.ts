@@ -11,7 +11,11 @@ import nullthrows from 'nullthrows';
 
 import { ConnectionConfig } from './WorkerDirectiveConnection';
 import { EndpointCallWritable, Message } from '../grpc-utils/types';
-import { FullRoutineID, toString as routineIDToString } from '../routine-id';
+import {
+  createNameBasedID as createNameBasedRoutineID,
+  FullRoutineID,
+  toString as routineIDToString,
+} from '../routine-id';
 import { genRoutine } from '../db/utils';
 import { Model as Task } from '../models/Task';
 import { Model as Workflow } from '../models/Workflow';
@@ -169,6 +173,7 @@ export default class WorkerLifecycleMgr {
       requestingWorkerID: null,
       runningWorkerID: selectedLifecycle.worker.id,
       routineDBID: routine.id,
+      routineID: createNameBasedRoutineID(routine, selectedLifecycle.project),
     });
 
     await DB.genSetModel(RoutineRunModule, run);
