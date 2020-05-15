@@ -1,6 +1,13 @@
 const rWholeNumber = /^\d+$/;
 
-function parse(str) {
+export interface Semver {
+  dev: boolean;
+  major: number;
+  minor: number;
+  patch: number;
+}
+
+export function parse(str: string): Semver {
   const split1 = str.split('.');
   if (split1.length !== 3) {
     throw Error(`Invalid SemVer string: ${str}`);
@@ -38,7 +45,10 @@ function parse(str) {
   };
 }
 
-function isValidTransition(fromSemver, toSemver) {
+export function isValidTransition(
+  fromSemver: Semver,
+  toSemver: Semver,
+): boolean {
   if (!fromSemver.dev && toSemver.dev) {
     return false;
   }
@@ -65,14 +75,9 @@ function isValidTransition(fromSemver, toSemver) {
   return false;
 }
 
-function isEqual(semver1, semver2) {
+export function isEqual(semver1: Semver, semver2: Semver): boolean {
   return ['dev', 'major', 'minor', 'patch'].every(
+    // @ts-ignore
     (key) => semver1[key] === semver2[key],
   );
 }
-
-module.exports = {
-  isEqual,
-  isValidTransition,
-  parse,
-};

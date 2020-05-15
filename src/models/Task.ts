@@ -1,6 +1,6 @@
+import * as semver from '../semver';
 import createModel from './createModel';
 import setModel from './setModel';
-import semver from '../semver';
 
 import { createRef as createProjectRef, Ref as ProjectRef } from './Project';
 import {
