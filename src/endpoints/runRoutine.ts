@@ -13,12 +13,18 @@ export default async function runRoutine(
   const { request } = call;
 
   const serialArgs = request.getArguments();
+  const localRunID = request.getLocalRunId();
   const serialRoutineID = request.getRoutineId();
 
   const args = JSON.parse(serialArgs);
   const routineID = parseFullRoutineID(serialRoutineID);
 
-  const run = await WorkerLifecycleMgr.genRunRoutine(routineID, args);
+  const run = await WorkerLifecycleMgr.genRunRoutine(
+    routineID,
+    localRunID,
+    args,
+  );
+
   const message = GRPCRoutineRun.createMessage(run);
   callback(null, message);
 }

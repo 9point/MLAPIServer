@@ -246,7 +246,7 @@ export function fromRoutine(
     switch (routine.modelType) {
       case 'Task': {
         const type = 'tname';
-        const version = routine.modelType;
+        const version = routine.version;
         return { projectName, routineName, type, version };
       }
 

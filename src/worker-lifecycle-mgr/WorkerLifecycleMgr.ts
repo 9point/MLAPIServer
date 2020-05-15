@@ -30,13 +30,10 @@ type WorkerChange = DB.Change<typeof WorkerModule.MODEL_TYPE, Worker>;
 
 export default class WorkerLifecycleMgr {
   private isConfigured: boolean = false;
+  private lifecycles: WorkerLifecycle[] = [];
   private pendingConnectionConfigurations: ConnectionConfig[] = [];
-  private lifecycleState: { [id: string]: LifecycleState } = {};
+  private routineRuns: RoutineRun[] = [];
   private subscriptions: Subscription[] = [];
-
-  private get lifecycles(): WorkerLifecycle[] {
-    return Object.values(this.lifecycleState).map((s) => s.lifecycle);
-  }
 
   // ---------------------------------------------------------------------------
   // SETUP
@@ -130,12 +127,29 @@ export default class WorkerLifecycleMgr {
   }
 
   // ---------------------------------------------------------------------------
-  // PUBLIC METHODS
+  // ROUTINE RUN
   // ---------------------------------------------------------------------------
 
   public async genRunRoutine(
     id: FullRoutineID,
+    localRunID: string,
     args: Object,
+  ): Promise<RoutineRun> {
+    return await this.genRunRoutineImpl(
+      id,
+      localRunID,
+      null /* parentRunID */,
+      args,
+      null /* fromWorkerID */,
+    );
+  }
+
+  private async genRunRoutineImpl(
+    id: FullRoutineID,
+    localRunID: string,
+    parentRunID: string | null,
+    args: Object,
+    fromWorkerID: string | null,
   ): Promise<RoutineRun> {
     console.log('[WorkerLifecycleMgr] Running routine');
 
@@ -144,8 +158,9 @@ export default class WorkerLifecycleMgr {
     // to be run. Could support in the future the ability to have a workflow
     // run pending for a set of workers.
 
-    const lifecycles = this.lifecycles.filter((lc) => lc.canRunRoutine(id));
-    if (lifecycles.length === 0) {
+    const selectedLifecycle = this.selectLifecycle(id);
+
+    if (!selectedLifecycle) {
       const str = routineIDToString(id);
       throw Error(
         `Cannot run routine: ${str}. There are no workers available.`,
@@ -159,18 +174,15 @@ export default class WorkerLifecycleMgr {
       throw new Error(`No routine found for id: ${strID}`);
     }
 
-    const selectedLifecycle = lifecycles[0];
-
-    // STEP 2: RUN THE ROUTINE.
+    // STEP 2: CREATE THE ROUTINE RUN.
     // TODO: For now, will assume that a worker which is asked to run the
     // routine will always successfully run the routine. This will likely not be
     // true in the future.
 
-    selectedLifecycle.runRoutine(routine, args);
-
     const run = RoutineRunModule.create({
-      parentRunID: null,
-      requestingWorkerID: null,
+      localRunID,
+      parentRunID,
+      requestingWorkerID: fromWorkerID,
       runningWorkerID: selectedLifecycle.worker.id,
       routineDBID: routine.id,
       routineID: createNameBasedRoutineID(routine, selectedLifecycle.project),
@@ -178,14 +190,41 @@ export default class WorkerLifecycleMgr {
 
     await DB.genSetModel(RoutineRunModule, run);
 
-    // STEP 3: REGISTER THE RUNNING ROUTINE.
+    this.routineRuns.push(run);
 
-    const state = this.lifecycleState[selectedLifecycle.worker.id];
-    assert(state);
-
-    state.activeRuns.push(run);
+    // STEP 3: RUN THE ROUTINE.
+    selectedLifecycle.runRoutine(
+      routine,
+      args,
+      run.id,
+      run.parentRunRef?.refID || null,
+      run.localRunID,
+      fromWorkerID,
+    );
 
     return run;
+  }
+
+  private selectLifecycle(routineID: FullRoutineID): WorkerLifecycle | null {
+    let selectedLifecycle: WorkerLifecycle | null = null;
+
+    for (const lc of this.lifecycles) {
+      if (!lc.canRunRoutine(routineID)) {
+        continue;
+      }
+
+      const runCount = this.routineRuns.filter(
+        (run) => lc.worker.id === run.runningWorkerRef.refID,
+      ).length;
+
+      if (runCount > 0) {
+        continue;
+      }
+
+      selectedLifecycle = lc;
+    }
+
+    return selectedLifecycle;
   }
 
   // ---------------------------------------------------------------------------
@@ -204,7 +243,7 @@ export default class WorkerLifecycleMgr {
     );
 
     for (const worker of addedWorkers) {
-      if (this.lifecycleState[worker.id]) {
+      if (this.lifecycles.some((lc) => lc.worker.id === worker.id)) {
         // Worker already exists.
         continue;
       }
@@ -216,9 +255,12 @@ export default class WorkerLifecycleMgr {
       const lifecycle = new WorkerLifecycle(worker, project);
       lifecycle.configure();
 
-      this.lifecycleState[worker.id] = { activeRuns: [], lifecycle };
+      this.lifecycles.push(lifecycle);
 
       this.subscriptions.push(
+        lifecycle.onRequestStartRoutine(
+          this.onRequestStartRoutine.bind(this, lifecycle),
+        ),
         lifecycle.onStartRoutineRun(
           this.onStartRoutineRun.bind(this, lifecycle),
         ),
@@ -239,46 +281,92 @@ export default class WorkerLifecycleMgr {
     await DB.genDeleteModel(WorkerModule, worker);
     lifecycle.cleanup();
 
-    const workerID = lifecycle.worker.id;
-    delete this.lifecycleState[workerID];
+    const index = this.lifecycles.indexOf(lifecycle);
+    if (index >= 0) {
+      this.lifecycles.splice(index, 1);
+    }
 
     console.log(
       `[WorkerLifecycleMgr] Lifecycle closed. Total remaining: ${this.lifecycles.length}`,
     );
   };
 
+  private onRequestStartRoutine = async (
+    lifecycle: WorkerLifecycle,
+    routineID: FullRoutineID,
+    localRunID: string,
+    parentRunID: string,
+    args: Object,
+  ) => {
+    this.genRunRoutineImpl(
+      routineID,
+      localRunID,
+      parentRunID,
+      args,
+      lifecycle.worker.id,
+    );
+  };
+
   private onStartRoutineRun = async (
     lifecycle: WorkerLifecycle,
-    payload: any,
+    routineID: FullRoutineID,
+    runID: string,
   ) => {
     console.log('[WorkerLifecycleMgr] Started routine');
 
-    // Find the run associated with this routine.
-    const routine: Task | Workflow = payload.routine;
-    const state = this.lifecycleState[lifecycle.worker.id];
-    assert(state);
-
-    let run = state.activeRuns.find((r) => r.routineRef.refID === routine.id);
+    let run = this.routineRuns.find((r) => r.id === runID);
     assert(run);
 
     run = RoutineRunModule.set(run, { status: 'RUNNING' });
     await DB.genSetModel(RoutineRunModule, run);
+
+    // Forward the info to the requesting worker / lifecycle.
+    if (run.requestingWorkerRef) {
+      const requestingWorkerID = run.requestingWorkerRef.refID;
+      const requestingLC = this.lifecycles.find(
+        (lc) => lc.worker.id === requestingWorkerID,
+      );
+      assert(requestingLC);
+
+      const fromWorkerID = lifecycle.worker.id;
+      requestingLC.runStarting(fromWorkerID, routineID, run.id, run.localRunID);
+    }
   };
 
   private onCompleteRoutineRun = async (
     lifecycle: WorkerLifecycle,
-    payload: any,
+    routineID: FullRoutineID,
+    runID: string,
+    result: Object,
   ) => {
     console.log('[WorkerLifecycleMgr] Completed routine');
 
-    const routine: Task | Workflow = payload.routine;
-    const state = this.lifecycleState[lifecycle.worker.id];
-    assert(state);
-
-    let run = state.activeRuns.find((r) => r.routineRef.refID === routine.id);
+    let run = this.routineRuns.find((r) => r.id === runID);
     assert(run);
 
     run = RoutineRunModule.set(run, { status: 'DONE' });
     await DB.genSetModel(RoutineRunModule, run);
+
+    // Forward the info to the requesting worker / lifecycle.
+    if (run.requestingWorkerRef) {
+      const requestingWorkerID = run.requestingWorkerRef.refID;
+      const requestingLC = this.lifecycles.find(
+        (lc) => lc.worker.id === requestingWorkerID,
+      );
+      assert(requestingLC);
+      const fromWorkerID = lifecycle.worker.id;
+      requestingLC.runCompleted(
+        fromWorkerID,
+        routineID,
+        run.id,
+        run.localRunID,
+        result,
+      );
+    }
+
+    // Remote the completed run from the set of runs.
+    const index = this.routineRuns.findIndex((r) => r.id === run?.id);
+    assert(index >= 0);
+    this.routineRuns.splice(index, 1);
   };
 }

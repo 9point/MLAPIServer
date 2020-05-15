@@ -24,6 +24,7 @@ export type RunStatus =
   | 'UNKNOWN';
 
 export interface Fields {
+  localRunID: string;
   parentRunRef: Ref | null;
   requestingWorkerRef: WorkerRef | null;
   routineID: string;
@@ -38,6 +39,7 @@ export type Ref = _Ref<typeof MODEL_TYPE>;
 
 export interface CreateFields {
   parentRunID: string | null;
+  localRunID: string;
   requestingWorkerID: string | null;
   runningWorkerID: string;
   routineDBID: string;
@@ -48,6 +50,7 @@ export function create(fields: CreateFields): Model {
   assert(['tname', 'wfname'].includes(fields.routineID.type));
 
   return createModel(MODEL_TYPE, {
+    localRunID: fields.localRunID,
     requestingWorkerRef:
       fields.requestingWorkerID === null
         ? null

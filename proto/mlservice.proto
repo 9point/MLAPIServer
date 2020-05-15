@@ -88,10 +88,11 @@ message Obj_RoutineRun {
   int64 created_at = 2;
   int64 updated_at = 3;
   bool is_deleted = 4;
-  string parent_run_id = 5;
-  string requesting_worker_id = 6;
-  string routine_dbid = 7;
-  Status status = 8;
+  string local_run_id = 5;
+  string parent_run_id = 6;
+  string requesting_worker_id = 7;
+  string routine_dbid = 8;
+  Status status = 9;
 }
 
 message Obj_WorkerDirective {
@@ -152,7 +153,8 @@ message Req_RouteWorkerDirective {
 
 message Req_RunRoutine {
   string arguments = 1;
-  string routine_id = 2;
+  string local_run_id = 2;
+  string routine_id = 3;
 }
 
 message Res_RegisterWorker {

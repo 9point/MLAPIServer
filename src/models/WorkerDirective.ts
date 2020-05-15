@@ -70,29 +70,13 @@ export function createHeartbeatCheckPulse(
   });
 }
 
-export interface CreateFields$InfoRequestStatus {
-  toWorkerID: string;
-}
-
-export function createInfoRequestStatus(
-  fields: CreateFields$InfoRequestStatus,
-): Model {
-  const { toWorkerID } = fields;
-
-  return create({
-    directiveType: 'SERVICE_TO_WORKER',
-    fromWorkerID: null,
-    payload: {},
-    payloadKey: 'v1.info.check_status',
-    toWorkerID,
-  });
-}
-
 export interface CreateFields$RoutineRequestStart {
   arguments: { [key: string]: any };
   fromWorkerID: string | null;
+  localRunID: string;
+  parentRunID: string | null;
   routineID: string;
-  requestingWorkerLocalExecutionID: string | null;
+  runID: string | null;
   toWorkerID: string;
 }
 
@@ -102,18 +86,17 @@ export function createRoutineRequestStart(
   const {
     arguments: _arguments,
     fromWorkerID,
-    requestingWorkerLocalExecutionID,
+    localRunID,
+    parentRunID,
     routineID,
+    runID,
     toWorkerID,
   } = fields;
 
   let directiveType: WorkerDirectiveType;
   if (!fromWorkerID) {
-    // This directive was not initiated by a worker.
-    assert(requestingWorkerLocalExecutionID === null);
     directiveType = 'SERVICE_TO_WORKER';
   } else {
-    assert(requestingWorkerLocalExecutionID !== null);
     directiveType = 'WORKER_TO_WORKER';
   }
 
@@ -122,8 +105,10 @@ export function createRoutineRequestStart(
     fromWorkerID,
     payload: {
       arguments: _arguments,
-      requestingWorkerLocalExecutionID,
+      localRunID,
+      parentRunID,
       routineID,
+      runID,
     },
     payloadKey: 'v1.routine.request_start',
     toWorkerID,
@@ -132,27 +117,24 @@ export function createRoutineRequestStart(
 
 export interface CreateFields$RoutineStarting {
   fromWorkerID: string;
-  requestingWorkerLocalExecutionID: string;
   routineID: string;
+  localRunID: string;
+  runID: string;
   toWorkerID: string;
 }
 
 export function createRoutineStarting(
   fields: CreateFields$RoutineStarting,
 ): Model {
-  const {
-    fromWorkerID,
-    requestingWorkerLocalExecutionID,
-    routineID,
-    toWorkerID,
-  } = fields;
+  const { fromWorkerID, localRunID, routineID, runID, toWorkerID } = fields;
 
   return create({
     directiveType: 'WORKER_TO_WORKER',
     fromWorkerID,
     payload: {
-      requestingWorkerLocalExecutionID,
+      localRunID,
       routineID,
+      runID,
     },
     payloadKey: 'v1.routine.starting',
     toWorkerID,
@@ -161,9 +143,10 @@ export function createRoutineStarting(
 
 export interface CreateFields$RoutineCompleted {
   fromWorkerID: string;
-  requestingWorkerLocalExecutionID: string;
+  localRunID: string;
   result: any;
   routineID: string;
+  runID: string;
   toWorkerID: string;
 }
 
@@ -172,9 +155,10 @@ export function createRoutineCompleted(
 ): Model {
   const {
     fromWorkerID,
-    requestingWorkerLocalExecutionID,
+    localRunID,
     result,
     routineID,
+    runID,
     toWorkerID,
   } = fields;
 
@@ -182,9 +166,10 @@ export function createRoutineCompleted(
     directiveType: 'WORKER_TO_WORKER',
     fromWorkerID,
     payload: {
+      localRunID,
       result,
-      requestingWorkerLocalExecutionID,
       routineID,
+      runID,
     },
     payloadKey: 'v1.routine.completed',
     toWorkerID,
@@ -194,8 +179,9 @@ export function createRoutineCompleted(
 export interface CreateFields$RoutineFailed {
   errorMessage: string;
   fromWorkerID: string;
-  requestingWorkerLocalExecutionID: string;
+  localRunID: string;
   routineID: string;
+  runID: string;
   toWorkerID: string;
 }
 
@@ -203,8 +189,9 @@ export function createRoutineFailed(fields: CreateFields$RoutineFailed): Model {
   const {
     errorMessage,
     fromWorkerID,
-    requestingWorkerLocalExecutionID,
+    localRunID,
     routineID,
+    runID,
     toWorkerID,
   } = fields;
 
@@ -213,8 +200,9 @@ export function createRoutineFailed(fields: CreateFields$RoutineFailed): Model {
     fromWorkerID,
     payload: {
       errorMessage,
-      requestingWorkerLocalExecutionID,
+      localRunID,
       routineID,
+      runID,
     },
     payloadKey: 'v1.routine.failed',
     toWorkerID,

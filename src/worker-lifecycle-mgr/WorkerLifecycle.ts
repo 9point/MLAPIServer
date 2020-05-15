@@ -2,7 +2,9 @@ import * as DB from '../db';
 import WorkerModule, { Model as Worker, WorkerStatus } from '../models/Worker';
 import WorkerDirectiveModule, {
   createHeartbeatCheckPulse,
+  createRoutineCompleted,
   createRoutineRequestStart,
+  createRoutineStarting,
   Model as WorkerDirective,
 } from '../models/WorkerDirective';
 import WorkerDirectiveConnection from './WorkerDirectiveConnection';
@@ -12,8 +14,10 @@ import assert from 'assert';
 import { ConnectionConfig } from './WorkerDirectiveConnection';
 import {
   fromRoutine as routineIDFromRoutine,
+  FullRoutineID,
   matches as matchesRoutineID,
   parse as parseRoutineID,
+  parseFull as parseFullRoutineID,
   RoutineID,
   toString as routineIDToString,
 } from '../routine-id';
@@ -26,16 +30,21 @@ interface HeartbeatState {
   [id: string]: boolean;
 }
 
+// TODO: Better typing.
 interface Listener {
-  cb: (param: any) => void;
+  cb: (...param: any[]) => void;
   key: string;
+}
+
+interface RunInfo {
+  routine: Task | Workflow;
+  runID: string;
 }
 
 export default class WorkerLifecycle {
   private _project: Project;
   private _worker: Worker;
   private acceptableRoutineIDs: RoutineID[] = [];
-  private activeRoutines: Array<Task | Workflow> = [];
   private directiveConnection: WorkerDirectiveConnection | null = null;
   private directiveConnectionSubscriptions: Subscription[] = [];
   private heartbeatState: HeartbeatState | null = null;
@@ -112,8 +121,18 @@ export default class WorkerLifecycle {
     this.directiveConnectionSubscriptions.push(
       connection.onDirective('v1.heartbeat.give_pulse', this.onHeartbeatPulse),
       connection.onDirective('v1.log', this.onLog),
-      connection.onDirective('v1.routine.completed', this.onTaskCompleted),
-      connection.onDirective('v1.routine.starting', this.onTaskStarting),
+      connection.onDirective(
+        'v1.routine.completed',
+        this.onReceivedRoutineCompleted,
+      ),
+      connection.onDirective(
+        'v1.routine.request_start',
+        this.onReceivedRoutineRequestStart,
+      ),
+      connection.onDirective(
+        'v1.routine.starting',
+        this.onReceivedRoutineStarting,
+      ),
       connection.onClose(this.onCloseDirectiveConnection),
       this.createHeartbeatState(),
       this.startHeartbeat(),
@@ -127,27 +146,26 @@ export default class WorkerLifecycle {
   // ---------------------------------------------------------------------------
 
   public canRunRoutine(id: RoutineID): boolean {
-    return (
-      this.activeRoutines.length === 0 &&
-      this.acceptableRoutineIDs.some((_id) => matchesRoutineID(_id, id))
-    );
+    return this.acceptableRoutineIDs.some((_id) => matchesRoutineID(_id, id));
   }
 
   public runRoutine(
     routine: Task | Workflow,
     args: { [key: string]: any },
-    fromWorkerID: string | null = null,
-    requestingWorkerLocalExecutionID: string | null = null,
+    runID: string,
+    parentRunID: string | null,
+    localRunID: string,
+    fromWorkerID: string | null,
   ) {
-    // TODO: For now, only 1 active routine per worker.
-    assert(this.activeRoutines.length === 0);
-    assert(this.status === 'IDLE');
-    assert(this.directiveConnection);
+    console.log('[WorkerLifecycle] runRoutine');
+    assert(this.status === 'IDLE', 'Expecting worker to be IDLE');
+    assert(this.directiveConnection, 'Expectin directive connection to exist.');
 
     const id = routineIDFromRoutine(routine, this.project);
 
     if (!this.canRunRoutine(id)) {
-      throw new UnacceptedRoutine();
+      const strID = routineIDToString(id);
+      throw new UnacceptedRoutine(`Unable to run routine: ${strID}`);
     }
 
     if (!routine) {
@@ -157,15 +175,16 @@ export default class WorkerLifecycle {
     const fields = {
       arguments: args,
       fromWorkerID: fromWorkerID,
+      localRunID,
+      parentRunID,
       routineID: routineIDToString(id),
-      requestingWorkerLocalExecutionID,
+      runID,
       toWorkerID: this._worker.id,
     };
 
     const directive = createRoutineRequestStart(fields);
 
     this.directiveConnection.send(directive);
-    this.activeRoutines.push(routine);
   }
 
   // ---------------------------------------------------------------------------
@@ -173,17 +192,76 @@ export default class WorkerLifecycle {
   // ---------------------------------------------------------------------------
 
   // TODO: Better callback typing.
-  public onStartRoutineRun(cb: (payload: any) => void) {
-    return this.addListener({ cb, key: 'taskRunStart' });
+  public onStartRoutineRun(
+    cb: (routineID: FullRoutineID, runID: string) => void,
+  ) {
+    return this.addListener({ cb, key: 'startRoutineRun' });
+  }
+
+  public onRequestStartRoutine(
+    cb: (
+      routineID: FullRoutineID,
+      localRunID: string,
+      parentRunID: string,
+      args: Object,
+    ) => {},
+  ): Subscription {
+    return this.addListener({ cb, key: 'requestStartRoutine' });
   }
 
   // TODO: Better callback typing.
-  public onCompleteRoutineRun(cb: (payload: any) => void) {
-    return this.addListener({ cb, key: 'taskRunComplete' });
+  public onCompleteRoutineRun(
+    cb: (routineID: FullRoutineID, runID: string, result: Object) => void,
+  ) {
+    return this.addListener({ cb, key: 'completeRoutineRun' });
   }
 
   public onCloseConnection(cb: () => void) {
-    return this.addListener({ cb, key: 'connectionClose' });
+    return this.addListener({ cb, key: 'closeConnection' });
+  }
+
+  // ---------------------------------------------------------------------------
+  // MESSAGE FORWARDING
+  // ---------------------------------------------------------------------------
+
+  public runStarting(
+    fromWorkerID: string,
+    routineID: FullRoutineID,
+    runID: string,
+    localRunID: string,
+  ) {
+    assert(this.directiveConnection);
+
+    const directive = createRoutineStarting({
+      fromWorkerID,
+      routineID: routineIDToString(routineID),
+      localRunID,
+      runID,
+      toWorkerID: this.worker.id,
+    });
+
+    this.directiveConnection.send(directive);
+  }
+
+  public runCompleted(
+    fromWorkerID: string,
+    routineID: FullRoutineID,
+    runID: string,
+    localRunID: string,
+    result: Object,
+  ) {
+    assert(this.directiveConnection);
+
+    const directive = createRoutineCompleted({
+      fromWorkerID,
+      localRunID,
+      result,
+      routineID: routineIDToString(routineID),
+      runID,
+      toWorkerID: this.worker.id,
+    });
+
+    this.directiveConnection.send(directive);
   }
 
   // ---------------------------------------------------------------------------
@@ -213,10 +291,10 @@ export default class WorkerLifecycle {
     return { stop };
   }
 
-  private sendEvent(key: string, payload?: any) {
+  private sendEvent(key: string, ...args: any[]) {
     for (const listener of this.listeners) {
       if (listener.key === key) {
-        listener.cb(payload);
+        listener.cb(...args);
       }
     }
   }
@@ -291,7 +369,7 @@ export default class WorkerLifecycle {
   // ---------------------------------------------------------------------------
 
   private onCloseDirectiveConnection = () => {
-    this.sendEvent('connectionClose');
+    this.sendEvent('closeConnection');
   };
 
   // ---------------------------------------------------------------------------
@@ -318,22 +396,45 @@ export default class WorkerLifecycle {
     this.setWorkerStatus(status);
   };
 
-  private onTaskStarting = (directive: WorkerDirective) => {
-    // TODO: Assert this is the same routine that is running.
-    assert(this.activeRoutines.length > 0);
+  private onReceivedRoutineRequestStart = (directive: WorkerDirective) => {
+    console.log('[WorkerLifecycle] Receiving routine request start');
 
-    const routine = this.activeRoutines[0];
-    this.sendEvent('taskRunStart', { routine });
+    const { payload } = directive;
+
+    const fullRoutineID = parseFullRoutineID(payload.routineID);
+
+    const { arguments: args, localRunID, parentRunID } = payload;
+
+    this.sendEvent(
+      'requestStartRoutine',
+      fullRoutineID,
+      localRunID,
+      parentRunID,
+      args,
+    );
   };
 
-  private onTaskCompleted = (directive: WorkerDirective) => {
-    // TODO: Assert this is the same routine that is running.
-    assert(this.activeRoutines.length > 0);
+  private onReceivedRoutineStarting = (directive: WorkerDirective) => {
+    console.log('[WorkerLifecycle] Receiving routine starting');
 
-    const routine = this.activeRoutines[0];
-    this.activeRoutines.splice(this.activeRoutines.indexOf(routine), 1);
+    const { payload } = directive;
+    const routineID = parseFullRoutineID(payload.routineID);
+    const runID = payload.runID;
 
-    this.sendEvent('taskRunComplete', { routine });
+    assert(runID);
+
+    this.sendEvent('startRoutineRun', routineID, runID);
+  };
+
+  private onReceivedRoutineCompleted = (directive: WorkerDirective) => {
+    console.log('[WorkerLifecycle] Receiving routine completed');
+
+    const { payload } = directive;
+    const routineID = parseFullRoutineID(payload.routineID);
+    const runID = payload.runID;
+    const result = payload.result;
+
+    this.sendEvent('completeRoutineRun', routineID, runID, result);
   };
 }
 

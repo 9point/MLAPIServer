@@ -70,10 +70,18 @@ export default class WorkerDirectiveConnection {
     });
     await DB.genSetModel(WorkerDirectiveModule, directive);
 
+    let foundListener = false;
     for (const listener of this.directiveListeners) {
       if (listener.key === directive.payloadKey) {
+        foundListener = true;
         listener.cb(directive);
       }
+    }
+
+    if (!foundListener) {
+      console.log(
+        `[WorkerDirectiveConnection] No listeners for directive: ${directive.payloadKey}`,
+      );
     }
   };
 

@@ -1,4 +1,4 @@
-import { matches, parse, toString } from './routine-id';
+import { matches, parse, parseFull, toString } from './routine-id';
 
 describe('parse', () => {
   test('works with task names', () => {
@@ -8,6 +8,26 @@ describe('parse', () => {
       routineName: 'hello-world',
       type: 'tname',
       version: undefined,
+    });
+  });
+
+  test('works with task names containing versions', () => {
+    const id = parse('tname:hello-world:1.0.1');
+    expect(id).toEqual({
+      projectName: undefined,
+      routineName: 'hello-world',
+      type: 'tname',
+      version: '1.0.1',
+    });
+  });
+
+  test('works with task names containing project names', () => {
+    const id = parse('tname:proj:hello:1.0.1');
+    expect(id).toEqual({
+      projectName: 'proj',
+      routineName: 'hello',
+      type: 'tname',
+      version: '1.0.1',
     });
   });
 
@@ -37,5 +57,25 @@ describe('matches', () => {
     const wf1 = parse('wfname:test-proj:test-routine');
     const wf2 = parse('wfname:test-proj:test-routine');
     expect(matches(wf1, wf2));
+  });
+});
+
+describe('parseFull', () => {
+  test('works with task names', () => {
+    const id = parseFull('tname:proj:hello:1.0.1');
+    expect(id).toEqual({
+      projectName: 'proj',
+      routineName: 'hello',
+      type: 'tname',
+      version: '1.0.1',
+    });
+  });
+});
+
+describe('toString', () => {
+  test('converts task routine id to string', () => {
+    expect(toString(parse('tname:proj:hello:1.0.1'))).toBe(
+      'tname:proj:hello:1.0.1',
+    );
   });
 });
