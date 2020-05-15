@@ -1,4 +1,4 @@
-import * as DB from '../db-DEPRECATED';
+import * as DB from '../db';
 import * as GRPCErrorUtils from '../grpc-utils/error-utils';
 import * as GRPCWorkerDirective from '../grpc-utils/WorkerDirective';
 import WorkerDirectiveModule, {
