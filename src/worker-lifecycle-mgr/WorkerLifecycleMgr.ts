@@ -153,7 +153,13 @@ export default class WorkerLifecycleMgr {
   ): Promise<RoutineRun> {
     console.log('[WorkerLifecycleMgr] Running routine');
 
-    // STEP 1: PICK A WORKER TO RUN THE ROUTINE.
+    const routine = await genRoutine(id);
+
+    if (!routine) {
+      const strID = routineIDToString(id);
+      throw new Error(`No routine found for id: ${strID}`);
+    }
+
     // TODO: For now, workers need to be online and ready for a workflow
     // to be run. Could support in the future the ability to have a workflow
     // run pending for a set of workers.
@@ -167,18 +173,6 @@ export default class WorkerLifecycleMgr {
       );
     }
 
-    const routine = await genRoutine(id);
-
-    if (!routine) {
-      const strID = routineIDToString(id);
-      throw new Error(`No routine found for id: ${strID}`);
-    }
-
-    // STEP 2: CREATE THE ROUTINE RUN.
-    // TODO: For now, will assume that a worker which is asked to run the
-    // routine will always successfully run the routine. This will likely not be
-    // true in the future.
-
     const run = RoutineRunModule.create({
       localRunID,
       parentRunID,
@@ -188,11 +182,8 @@ export default class WorkerLifecycleMgr {
       routineID: createNameBasedRoutineID(routine, selectedLifecycle.project),
     });
 
-    await DB.genSetModel(RoutineRunModule, run);
-
     this.routineRuns.push(run);
 
-    // STEP 3: RUN THE ROUTINE.
     selectedLifecycle.runRoutine(
       routine,
       args,
@@ -202,11 +193,14 @@ export default class WorkerLifecycleMgr {
       fromWorkerID,
     );
 
+    await DB.genSetModel(RoutineRunModule, run);
+
     return run;
   }
 
   private selectLifecycle(routineID: FullRoutineID): WorkerLifecycle | null {
     let selectedLifecycle: WorkerLifecycle | null = null;
+    let selectedRunCount: number | null = null;
 
     for (const lc of this.lifecycles) {
       if (!lc.canRunRoutine(routineID)) {
@@ -217,11 +211,10 @@ export default class WorkerLifecycleMgr {
         (run) => lc.worker.id === run.runningWorkerRef.refID,
       ).length;
 
-      if (runCount > 0) {
-        continue;
+      if (selectedRunCount === null || runCount < selectedRunCount) {
+        selectedLifecycle = lc;
+        selectedRunCount = runCount;
       }
-
-      selectedLifecycle = lc;
     }
 
     return selectedLifecycle;

@@ -158,7 +158,6 @@ export default class WorkerLifecycle {
     fromWorkerID: string | null,
   ) {
     console.log('[WorkerLifecycle] runRoutine');
-    assert(this.status === 'IDLE', 'Expecting worker to be IDLE');
     assert(this.directiveConnection, 'Expectin directive connection to exist.');
 
     const id = routineIDFromRoutine(routine, this.project);
