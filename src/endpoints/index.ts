@@ -1,4 +1,4 @@
-import ErrorUtils from '../grpc-utils-DEPRECATED/error-utils';
+import * as GRPCErrorUtils from '../grpc-utils/error-utils';
 
 import getProject from './getProject';
 import getWorkflow from './getWorkflow';
@@ -13,13 +13,13 @@ import runRoutine from './runRoutine';
 // prettier-ignore
 
 export default {
-  getProject: ErrorUtils.handleCallbackEndpointError(getProject),
-  getWorkflow: ErrorUtils.handleCallbackEndpointError(getWorkflow),
-  registerContainerImage: ErrorUtils.handleCallbackEndpointError(registerContainerImage),
-  registerProject: ErrorUtils.handleCallbackEndpointError(registerProject),
-  registerTasks: ErrorUtils.handleStreamEndpointError(registerTasks),
-  registerWorker: ErrorUtils.handleCallbackEndpointError(registerWorker),
-  registerWorkflows: ErrorUtils.handleStreamEndpointError(registerWorkflows),
-  routeWorkerDirectives: ErrorUtils.handleStreamEndpointError(routeWorkerDirectives),
-  runRoutine: ErrorUtils.handleCallbackEndpointError(runRoutine),
+  getProject: GRPCErrorUtils.handleCallbackEndpointError(getProject),
+  getWorkflow: GRPCErrorUtils.handleCallbackEndpointError(getWorkflow),
+  registerContainerImage: GRPCErrorUtils.handleCallbackEndpointError(registerContainerImage),
+  registerProject: GRPCErrorUtils.handleCallbackEndpointError(registerProject),
+  registerTasks: GRPCErrorUtils.handleStreamEndpointError(registerTasks),
+  registerWorker: GRPCErrorUtils.handleCallbackEndpointError(registerWorker),
+  registerWorkflows: GRPCErrorUtils.handleStreamEndpointError(registerWorkflows),
+  routeWorkerDirectives: GRPCErrorUtils.handleStreamEndpointError(routeWorkerDirectives),
+  runRoutine: GRPCErrorUtils.handleCallbackEndpointError(runRoutine),
 };

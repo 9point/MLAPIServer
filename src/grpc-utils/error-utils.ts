@@ -1,8 +1,14 @@
-function handleStreamError(stream, cb) {
-  return (...args) => {
+import { EndpointCall, EndpointCallback, EndpointCallWritable } from './types';
+
+export function handleStreamError(
+  stream: EndpointCallWritable,
+  cb: EndpointCallback,
+) {
+  return (...args: any[]) => {
     // Endpoint may or may not be async. Need to handle both cases.
     let promise;
     try {
+      // @ts-ignore
       promise = cb.apply(cb, args);
     } catch (error) {
       console.error(`Caught unhandled endpoint error: ${error}`);
@@ -14,7 +20,7 @@ function handleStreamError(stream, cb) {
 
     if (promise && typeof promise.catch === 'function') {
       // Assuming this is a promise.
-      promise.catch((error) => {
+      promise.catch((error: Error) => {
         console.error(`Caught unhandled endpoint error: ${error}`);
         if (error.stack) {
           console.error(error.stack);
@@ -25,8 +31,10 @@ function handleStreamError(stream, cb) {
   };
 }
 
-function handleStreamEndpointError(streamEndpoint) {
-  return (call) => {
+export function handleStreamEndpointError(
+  streamEndpoint: (call: EndpointCallWritable) => void | Promise<void>,
+) {
+  return (call: EndpointCallWritable) => {
     // Endpoint may or may not be async. Need to handle both cases.
     let promise;
     try {
@@ -52,8 +60,13 @@ function handleStreamEndpointError(streamEndpoint) {
   };
 }
 
-function handleCallbackEndpointError(endpoint) {
-  return (call, callback) => {
+export function handleCallbackEndpointError(
+  endpoint: (
+    call: EndpointCall,
+    callback: EndpointCallback,
+  ) => void | Promise<void>,
+) {
+  return (call: EndpointCall, callback: EndpointCallback) => {
     // Endpoint may or may not be async. Need to handle both cases.
     let promise;
     try {
@@ -78,9 +91,3 @@ function handleCallbackEndpointError(endpoint) {
     }
   };
 }
-
-module.exports = {
-  handleCallbackEndpointError,
-  handleStreamEndpointError,
-  handleStreamError,
-};

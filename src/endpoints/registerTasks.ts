@@ -1,6 +1,6 @@
 import * as DB from '../db';
+import * as GRPCErrorUtils from '../grpc-utils/error-utils';
 import * as GRPCTask from '../grpc-utils/Task';
-import GRPCErrorUtils from '../grpc-utils/error-utils';
 import TaskModule from '../models/Task';
 
 import { EndpointCallWritable, Message } from '../grpc-utils/types';

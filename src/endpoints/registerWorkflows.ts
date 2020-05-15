@@ -1,6 +1,6 @@
 import * as DB from '../db';
+import * as GRPCErrorUtils from '../grpc-utils/error-utils';
 import * as GRPCWorkflow from '../grpc-utils/Workflow';
-import GRPCErrorUtils from '../grpc-utils/error-utils';
 import WorkflowModule, { Model as Workflow } from '../models/Workflow';
 
 import { EndpointCallWritable, Message } from '../grpc-utils/types';
