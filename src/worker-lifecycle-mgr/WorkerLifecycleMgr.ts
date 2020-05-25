@@ -81,6 +81,7 @@ export default class WorkerLifecycleMgr {
 
     // Wait for a ready signal from the worker.
     const onData = (request: Message) => {
+      console.log('LMGR RECEIVING', request.getPayloadKey());
       if (isDone) {
         return;
       }
@@ -306,11 +307,12 @@ export default class WorkerLifecycleMgr {
     runID: string,
     localRunID: string,
   ) => {
-    console.log('[WorkerLifecycleMgr] Started routine');
+    console.log(`[WorkerLifecycleMgr] Started routine: ${runID}`);
 
     let run = this.routineRuns.find((r) => r.id === runID);
 
     if (!run) {
+      console.log('no run found, creating one');
       // Starting a routine run that is new. This is a routine run that
       // is being started and managed by the worker.
       const routine = await genRoutine(routineID);

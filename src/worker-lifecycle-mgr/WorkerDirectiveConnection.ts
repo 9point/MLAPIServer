@@ -70,6 +70,8 @@ export default class WorkerDirectiveConnection {
     });
     await DB.genSetModel(WorkerDirectiveModule, directive);
 
+    console.log('RECEIVED DIR:', directive.payloadKey);
+
     let foundListener = false;
     for (const listener of this.directiveListeners) {
       if (listener.key === directive.payloadKey) {

@@ -3,6 +3,8 @@ import * as GRPCErrorUtils from '../grpc-utils/error-utils';
 import * as GRPCTask from '../grpc-utils/Task';
 import TaskModule from '../models/Task';
 
+import createGRPCIterable from '../grpc-utils/createIterable';
+
 import { EndpointCallWritable, Message } from '../grpc-utils/types';
 import { Model as Task } from '../models/Task';
 import { RoutineID, parse as parseRoutineID } from '../routine-id';
@@ -13,38 +15,30 @@ export default async function registerTasks(call: EndpointCallWritable) {
   // Maps workflow id to all tasks for that workflow.
   const requests: Message[] = [];
 
-  function onData(request: Message) {
+  for await (const request of createGRPCIterable(call)) {
     console.log('[RegisterTasks]: Receiving request');
     requests.push(request);
   }
 
-  async function onEnd() {
-    console.log('[RegisterTasks]: Processing Requests');
-    console.log(`[RegisterTasks]: Request Count: ${requests.length}`);
+  console.log('[RegisterTasks]: Processing Requests');
+  console.log(`[RegisterTasks]: Request Count: ${requests.length}`);
 
-    console.log('[RegisterTasks]: Validating Requests');
-    validateRequests(requests);
+  console.log('[RegisterTasks]: Validating Requests');
+  validateRequests(requests);
 
-    const projectID = requests[0].getProjectRefId();
+  const projectID = requests[0].getProjectRefId();
 
-    console.log('[RegisterTasks]: Registering');
+  console.log('[RegisterTasks]: Registering');
 
-    const tasks = await Promise.all(
-      requests.map((req) => genRegisterTask(projectID, req)),
-    );
+  const tasks = await Promise.all(
+    requests.map((req) => genRegisterTask(projectID, req)),
+  );
+  console.log('[RegisterTasks]: Done Registering');
 
-    console.log('[RegisterTasks]: Done Registering');
-
-    for (const task of tasks) {
-      const message = GRPCTask.createMessage(task);
-      call.write(message);
-    }
-
-    call.end();
+  for (const task of tasks) {
+    const message = GRPCTask.createMessage(task);
+    call.write(message);
   }
-
-  call.on('data', GRPCErrorUtils.handleStreamError(call, onData));
-  call.on('end', GRPCErrorUtils.handleStreamError(call, onEnd));
 }
 
 function validateRequests(requests: Message[]) {

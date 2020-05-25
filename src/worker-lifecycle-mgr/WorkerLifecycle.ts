@@ -428,6 +428,7 @@ export default class WorkerLifecycle {
   private onReceivedRoutineStarting = (directive: WorkerDirective) => {
     console.log('[WorkerLifecycle] Receiving routine starting');
 
+    // TODO: Validate the payload.
     const { payload } = directive;
     const routineID = parseFullRoutineID(payload.routineID);
     const runID = payload.runID;
@@ -442,6 +443,7 @@ export default class WorkerLifecycle {
   private onReceivedRoutineCompleted = (directive: WorkerDirective) => {
     console.log('[WorkerLifecycle] Receiving routine completed');
 
+    // TODO: Validate the payload.
     const { payload } = directive;
     const routineID = parseFullRoutineID(payload.routineID);
     const localRunID = payload.localRunID;
