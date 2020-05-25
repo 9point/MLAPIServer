@@ -60,9 +60,10 @@ message Obj_Worker {
   int64 created_at = 2;
   int64 updated_at = 3;
   bool is_deleted = 4;
-  string project_id = 5;
-  string routines = 6;
-  Status status = 7;
+  bool accepts_work_requests = 5;
+  string project_id = 6;
+  string routines = 7;
+  Status status = 8;
 }
 
 message Obj_Workflow {
@@ -143,6 +144,7 @@ message Req_RegisterTask {
 message Req_RegisterWorker {
   string project_id = 1;
   string routines = 2;
+  bool accepts_work_requests = 3;
 }
 
 message Req_RouteWorkerDirective {

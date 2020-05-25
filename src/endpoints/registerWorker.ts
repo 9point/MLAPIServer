@@ -12,13 +12,18 @@ export default async function registerWorker(
   console.log('[RegisterWorker]: Calling');
 
   const { request } = call;
+  const acceptsWorkRequests: boolean = request.getAcceptsWorkRequests();
   const projectID: string = request.getProjectId();
   const routines: string[] = request.getRoutines().split('|');
 
   // Parsing will throw error if not a valid id.
   routines.forEach((r) => parseRoutineID(r));
 
-  const worker = WorkerModule.create({ projectID, routines });
+  const worker = WorkerModule.create({
+    acceptsWorkRequests,
+    projectID,
+    routines,
+  });
   await DB.genSetModel(WorkerModule, worker);
 
   console.log(`[RegisterWorker]: Saved worker: ${worker.id}`);

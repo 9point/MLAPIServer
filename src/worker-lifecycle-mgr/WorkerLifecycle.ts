@@ -79,6 +79,10 @@ export default class WorkerLifecycle {
     return this._worker.projectRef.refID;
   }
 
+  get acceptsWorkRequests(): boolean {
+    return this._worker.acceptsWorkRequests;
+  }
+
   // ---------------------------------------------------------------------------
   // SETUP
   // ---------------------------------------------------------------------------
@@ -146,7 +150,10 @@ export default class WorkerLifecycle {
   // ---------------------------------------------------------------------------
 
   public canRunRoutine(id: RoutineID): boolean {
-    return this.acceptableRoutineIDs.some((_id) => matchesRoutineID(_id, id));
+    return (
+      this.acceptsWorkRequests &&
+      this.acceptableRoutineIDs.some((_id) => matchesRoutineID(_id, id))
+    );
   }
 
   public runRoutine(
@@ -192,7 +199,7 @@ export default class WorkerLifecycle {
 
   // TODO: Better callback typing.
   public onStartRoutineRun(
-    cb: (routineID: FullRoutineID, runID: string) => void,
+    cb: (routineID: FullRoutineID, runID: string, localRunID: string) => void,
   ) {
     return this.addListener({ cb, key: 'startRoutineRun' });
   }
@@ -210,7 +217,12 @@ export default class WorkerLifecycle {
 
   // TODO: Better callback typing.
   public onCompleteRoutineRun(
-    cb: (routineID: FullRoutineID, runID: string, result: Object) => void,
+    cb: (
+      routineID: FullRoutineID,
+      runID: string,
+      localRunID: string,
+      result: Object,
+    ) => void,
   ) {
     return this.addListener({ cb, key: 'completeRoutineRun' });
   }
@@ -419,8 +431,10 @@ export default class WorkerLifecycle {
     const { payload } = directive;
     const routineID = parseFullRoutineID(payload.routineID);
     const runID = payload.runID;
+    const localRunID = payload.localRunID;
 
     assert(runID);
+    assert(localRunID);
 
     this.sendEvent('startRoutineRun', routineID, runID);
   };
@@ -430,10 +444,15 @@ export default class WorkerLifecycle {
 
     const { payload } = directive;
     const routineID = parseFullRoutineID(payload.routineID);
+    const localRunID = payload.localRunID;
     const runID = payload.runID;
     const result = payload.result;
 
-    this.sendEvent('completeRoutineRun', routineID, runID, result);
+    assert(runID);
+    assert(localRunID);
+    assert(result);
+
+    this.sendEvent('completeRoutineRun', routineID, runID, localRunID, result);
   };
 }
 

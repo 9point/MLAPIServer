@@ -22,6 +22,7 @@ export type WorkerStatus =
   | 'WORKING';
 
 export interface Fields {
+  acceptsWorkRequests: boolean;
   projectRef: ProjectRef;
   routines: string[];
   status: WorkerStatus;
@@ -32,6 +33,7 @@ export type Model = _Model<typeof MODEL_TYPE> & Fields;
 export type Ref = _Ref<typeof MODEL_TYPE>;
 
 export interface CreateFields {
+  acceptsWorkRequests: boolean;
   projectID: string;
   routines: string[];
   status?: WorkerStatus;
@@ -39,6 +41,7 @@ export interface CreateFields {
 
 export function create(fields: CreateFields): Model {
   return createModel(MODEL_TYPE, {
+    acceptsWorkRequests: fields.acceptsWorkRequests,
     projectRef: createProjectRef(fields.projectID),
     routines: fields.routines,
     status: fields.status || 'INITIALIZING',

@@ -304,11 +304,27 @@ export default class WorkerLifecycleMgr {
     lifecycle: WorkerLifecycle,
     routineID: FullRoutineID,
     runID: string,
+    localRunID: string,
   ) => {
     console.log('[WorkerLifecycleMgr] Started routine');
 
     let run = this.routineRuns.find((r) => r.id === runID);
-    assert(run);
+
+    if (!run) {
+      // Starting a routine run that is new. This is a routine run that
+      // is being started and managed by the worker.
+      const routine = await genRoutine(routineID);
+      assert(routine);
+
+      run = RoutineRunModule.create({
+        localRunID: localRunID,
+        parentRunID: null,
+        requestingWorkerID: null,
+        runningWorkerID: lifecycle.worker.id,
+        routineDBID: routine.id,
+        routineID,
+      });
+    }
 
     run = RoutineRunModule.set(run, { status: 'RUNNING' });
     await DB.genSetModel(RoutineRunModule, run);
@@ -330,6 +346,7 @@ export default class WorkerLifecycleMgr {
     lifecycle: WorkerLifecycle,
     routineID: FullRoutineID,
     runID: string,
+    localRunID: string,
     result: Object,
   ) => {
     console.log('[WorkerLifecycleMgr] Completed routine');
