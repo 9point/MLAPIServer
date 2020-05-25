@@ -3,6 +3,8 @@ import * as GRPCErrorUtils from '../grpc-utils/error-utils';
 import * as GRPCWorkflow from '../grpc-utils/Workflow';
 import WorkflowModule, { Model as Workflow } from '../models/Workflow';
 
+import createGRPCIterable from '../grpc-utils/createIterable';
+
 import { EndpointCallWritable, Message } from '../grpc-utils/types';
 
 export default async function registerWorkflows(call: EndpointCallWritable) {
@@ -10,32 +12,25 @@ export default async function registerWorkflows(call: EndpointCallWritable) {
 
   const requests: Message[] = [];
 
-  function onData(request: Message) {
+  for await (const message of createGRPCIterable(call)) {
     console.log('[RegisterWorkflows]: Receiving request');
-    requests.push(request);
+    requests.push(message);
   }
 
-  async function onEnd() {
-    console.log('[RegisterWorkflows]: Done Receiving requests');
+  console.log('[RegisterWorkflows]: Done Receiving requests');
 
-    validate(requests);
+  validate(requests);
 
-    const projectID = requests[0].getProjectRefId();
+  const projectID = requests[0].getProjectRefId();
 
-    const workflows = await Promise.all(
-      requests.map((req) => genRegisterWorkflow(req)),
-    );
+  const workflows = await Promise.all(
+    requests.map((req) => genRegisterWorkflow(req)),
+  );
 
-    for (const workflow of workflows) {
-      const message = GRPCWorkflow.createMessage(workflow);
-      call.write(message);
-    }
-
-    call.end();
+  for (const workflow of workflows) {
+    const message = GRPCWorkflow.createMessage(workflow);
+    call.write(message);
   }
-
-  call.on('data', GRPCErrorUtils.handleStreamError(call, onData));
-  call.on('end', GRPCErrorUtils.handleStreamError(call, onEnd));
 }
 
 function validate(requests: Message[]) {
