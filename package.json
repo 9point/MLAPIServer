@@ -20,7 +20,7 @@
     "grpc": "^1.11.0",
     "handlebars": "^4.7.6",
     "lodash": "^4.6.1",
-    "minimist": "^1.2.0",
+    "minimist": "^1.2.6",
     "mongoose": "^5.9.9",
     "nullthrows": "^1.1.1",
     "uuid": "^7.0.3"
