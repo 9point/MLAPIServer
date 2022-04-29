@@ -14,7 +14,7 @@
     "@grpc/proto-loader": "^0.1.0",
     "@types/node": "^13.13.5",
     "@types/uuid": "^7.0.3",
-    "async": "^1.5.2",
+    "async": "^2.6.4",
     "firebase-admin": "^8.11.0",
     "google-protobuf": "^3.0.0",
     "grpc": "^1.11.0",
